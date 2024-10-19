@@ -1,29 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:tripmanager/View/main_screen.dart';
 import 'package:tripmanager/Utils/constants.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-  clientId: '957647225907-dv0kjimvoms4jb64s8pt8eoam0bjaih6.apps.googleusercontent.com', // Replace with your actual client ID
-);
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
+      // Trigger Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser != null) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => BottomNavBar(),
-          ),
-        );
-        print('User signed in: ${googleUser.email}');
-      } else {
+      if (googleUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sign-in cancelled')),
         );
+        return;
       }
+
+      // Get the authentication credentials
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Create a Firebase credential
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credentials
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+
+      // Navigate to the main screen on success
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => BottomNavBar(),
+        ),
+      );
+
+      print('User signed in: ${userCredential.user?.email}');
     } catch (error) {
       print('Google Sign-In failed: $error');
       ScaffoldMessenger.of(context).showSnackBar(
