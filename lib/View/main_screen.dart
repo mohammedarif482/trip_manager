@@ -1,9 +1,8 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/home_screen.dart';
+import 'package:tripmanager/View/trips_screen.dart';
 import 'package:tripmanager/View/profile_screen.dart';
 import 'package:tripmanager/View/transactions_screen.dart';
 
@@ -17,7 +16,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   final List<Widget> _screens = [
     HomeScreen(),
-    TransactionScreen(),
+    TripsScreen(),
     ProfileScreen(),
   ];
 
@@ -40,7 +39,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
               icon: Icon(
-                Icons.wallet,
+                Icons.local_shipping,
               ),
               label: "Settings"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
