@@ -12,7 +12,20 @@
           "package_name": "com.example.tripmanager"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "957647225907-th0l1d63gs9qtbdu7fuj6mlrtpvriqj4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tripmanager",
+            "certificate_hash": "b1e7d2629cbd6edaa5e20fa07c806c2df0989fa0"
+          }
+        },
+        {
+          "client_id": "957647225907-dv0kjimvoms4jb64s8pt8eoam0bjaih6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAevwuErAN9LBDc4naEoO34jU0dOfyTAJk"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "957647225907-dv0kjimvoms4jb64s8pt8eoam0bjaih6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "957647225907-rgr6fuh6kfp162psdvugei02n9ocsb6g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tripmanager"
+              }
+            }
+          ]
         }
       }
     }
