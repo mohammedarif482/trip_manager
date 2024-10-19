@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:tripmanager/View/main_screen.dart';
 import 'package:tripmanager/Utils/constants.dart';
 
@@ -8,6 +9,7 @@ class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Firestore instance
 
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
@@ -34,6 +36,18 @@ class LoginScreen extends StatelessWidget {
       // Sign in to Firebase with the Google credentials
       final UserCredential userCredential =
           await _auth.signInWithCredential(credential);
+
+      // Check if the user already exists in Firestore
+      final userRef = _firestore.collection('users').doc(userCredential.user?.uid);
+      final userSnapshot = await userRef.get();
+
+      // If user does not exist, create a new user document
+      if (!userSnapshot.exists) {
+        await userRef.set({
+          'name': googleUser.displayName, // Store the user's name
+          'role': 'local', // Default role
+        });
+      }
 
       // Navigate to the main screen on success
       Navigator.of(context).pushReplacement(
