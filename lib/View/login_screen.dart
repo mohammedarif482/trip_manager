@@ -1,13 +1,36 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
-import 'package:tripmanager/Utils/constants.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:tripmanager/View/main_screen.dart';
+import 'package:tripmanager/Utils/constants.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
-  final TextEditingController _numberController = TextEditingController();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+  clientId: '957647225907-dv0kjimvoms4jb64s8pt8eoam0bjaih6.apps.googleusercontent.com', // Replace with your actual client ID
+);
+
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => BottomNavBar(),
+          ),
+        );
+        print('User signed in: ${googleUser.email}');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign-in cancelled')),
+        );
+      }
+    } catch (error) {
+      print('Google Sign-In failed: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign in')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,74 +46,29 @@ class LoginScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              'Enter your mobile number to continue',
+              'Sign in with your Google account to continue',
               style: TextStyle(fontSize: 16),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 40),
-            TextField(
-              controller: _numberController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                labelText: "Mobile Number",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                prefixIcon: Icon(Icons.phone),
-              ),
-            ),
-            SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      AppColors.primaryColor, // Set button color to red
+                  backgroundColor: AppColors.primaryColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18), // Rounded corners
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  padding: EdgeInsets.symmetric(vertical: 15), // Button padding
+                  padding: EdgeInsets.symmetric(vertical: 15),
                 ),
-                onPressed: () {
-                  String number = _numberController.text;
-                  if (number.isNotEmpty && number.length == 10) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => BottomNavBar(),
-                      ),
-                    );
-                    print('Number entered: $number');
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text("Please enter a valid 10-digit number"),
-                    ));
-                  }
-                },
-                child: Text(
-                  "Login",
+                icon: Icon(Icons.login, color: Colors.white),
+                label: Text(
+                  "Sign in with Google",
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
+                onPressed: () => _handleGoogleSignIn(context),
               ),
             ),
-            // SizedBox(
-            //   width: double.infinity,
-            //   child: ElevatedButton(
-
-            //     onPressed: () {
-            //       String number = _numberController.text;
-            //       if (number.isNotEmpty && number.length == 10) {
-            //         // Handle login logic here
-            //         print('Number entered: $number');
-            //       } else {
-            //         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            //           content: Text("Please enter a valid 10-digit number"),
-            //         ));
-            //       }
-            //     },
-            //     child: Text("Login"),
-            //   ),
-            // ),
           ],
         ),
       ),
