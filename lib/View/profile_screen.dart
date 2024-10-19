@@ -1,15 +1,18 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
+import 'package:tripmanager/View/login_screen.dart';
 import 'package:tripmanager/View/trucks_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
+  User? user = FirebaseAuth.instance.currentUser;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: AppColors.accentColor,
-          title: Text('Admin'),
+          title: Text(user?.displayName ?? 'No Name Provided'),
         ),
         body: Center(
           child: Column(
@@ -65,13 +68,12 @@ class ProfileScreen extends StatelessWidget {
                             child: Text("Cancel"),
                           ),
                           TextButton(
-                            onPressed: () {
-                              // Perform the log-out action here
-                              Navigator.of(context).pop(); // Close the dialog
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                content: Text("Logged out successfully"),
-                              ));
+                            onPressed: () async {
+                              await FirebaseAuth.instance.signOut();
+                              Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => LoginScreen()));
                             },
                             child: Text("Log Out"),
                           ),

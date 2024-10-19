@@ -13,6 +13,7 @@ class LoginScreen extends StatelessWidget {
     try {
       // Trigger Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      print(googleUser?.displayName);
       if (googleUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sign-in cancelled')),
