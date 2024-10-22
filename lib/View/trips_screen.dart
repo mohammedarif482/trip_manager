@@ -28,8 +28,8 @@ class _TripsScreenState extends State<TripsScreen> {
   @override
   void initState() {
     super.initState();
-    // Convert Trip objects to Map format for existing UI
     filteredTrips = _convertTripsToMap(DummyData.trips);
+    _fetchDrivers();
   }
 
   List<Map<String, dynamic>> _convertTripsToMap(List<Trip> trips) {
@@ -98,7 +98,8 @@ class _TripsScreenState extends State<TripsScreen> {
   Future<void> _fetchDrivers() async {
     final QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('users')
-        .where('isDriver', isEqualTo: true) // Only get documents where isDriver == true
+        .where('isDriver',
+            isEqualTo: true) // Only get documents where isDriver == true
         .get();
 
     setState(() {
@@ -110,160 +111,157 @@ class _TripsScreenState extends State<TripsScreen> {
     });
   }
 
-
   void _addNewTrip() {
-  if (selected_Driver == null || // Check if driver is selected
-      vehicleNumberController.text.isEmpty ||
-      fromLocationController.text.isEmpty ||
-      toLocationController.text.isEmpty ||
-      amountController.text.isEmpty) {
+    if (selected_Driver == null || // Check if driver is selected
+        vehicleNumberController.text.isEmpty ||
+        fromLocationController.text.isEmpty ||
+        toLocationController.text.isEmpty ||
+        amountController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    // Create new trip in the format expected by the UI
+    final newTrip = {
+      "name": selected_Driver, // Use the selected driver's name
+      "vehicleNumber": vehicleNumberController.text,
+      "fromLocation": fromLocationController.text,
+      "toLocation": toLocationController.text,
+      "date":
+          "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
+      "status": "Trip Started",
+      "amount": "₹ ${amountController.text}",
+    };
+
+    setState(() {
+      filteredTrips.insert(0, newTrip);
+    });
+
+    // Clear controllers
+    vehicleNumberController.clear();
+    fromLocationController.clear();
+    toLocationController.clear();
+    amountController.clear();
+
+    selected_Driver = null; // Reset the selected driver
+
+    Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please fill all fields')),
+      SnackBar(content: Text('Trip added successfully')),
     );
-    return;
   }
 
-  // Create new trip in the format expected by the UI
-  final newTrip = {
-    "name": selected_Driver, // Use the selected driver's name
-    "vehicleNumber": vehicleNumberController.text,
-    "fromLocation": fromLocationController.text,
-    "toLocation": toLocationController.text,
-    "date": "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
-    "status": "Trip Started",
-    "amount": "₹ ${amountController.text}",
-  };
+  void _showAddTripSheet() {
+    // Fetch the driver names from Firestore
 
-  setState(() {
-    filteredTrips.insert(0, newTrip);
-  });
-
-  // Clear controllers
-  vehicleNumberController.clear();
-  fromLocationController.clear();
-  toLocationController.clear();
-  amountController.clear();
-
-  selected_Driver = null; // Reset the selected driver
-
-  Navigator.pop(context);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Trip added successfully')),
-  );
-}
-
-
- void _showAddTripSheet() {
-  // Fetch the driver names from Firestore
-  _fetchDrivers();
-
-  showModalBottomSheet(
-    isScrollControlled: true,
-    context: context,
-    builder: (context) {
-      return Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 16,
-          right: 16,
-          top: 16,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Add New Trip",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-              // DropdownButton for selecting driver
-              DropdownButtonFormField<String>(
-                value: selectedDriver, // Keep track of the selected driver
-                hint: Text('Select Driver'),
-                items: drivers.map((driver) {
-                  return DropdownMenuItem<String>(
-                    value: driver['name'], // The driver name
-                    child: Text(driver['name']),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedDriver = value; // Update the selected driver
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: 'Driver Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: vehicleNumberController,
-                decoration: InputDecoration(
-                  labelText: 'Vehicle Number',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: fromLocationController,
-                decoration: InputDecoration(
-                  labelText: 'From Location',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: toLocationController,
-                decoration: InputDecoration(
-                  labelText: 'To Location',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Amount',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              ListTile(
-                title: Text("Select Date"),
-                subtitle: Text(
-                  "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                ),
-                trailing: Icon(Icons.calendar_today),
-                onTap: () => _selectDate(context),
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("Cancel"),
-                  ),
-                  SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: _addNewTrip,
-                    child: Text("Add Trip"),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-            ],
+    showModalBottomSheet(
+      isScrollControlled: true,
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
           ),
-        ),
-      );
-    },
-  );
-}
-
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Add New Trip",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 16),
+                // DropdownButton for selecting driver
+                DropdownButtonFormField<String>(
+                  value: selectedDriver, // Keep track of the selected driver
+                  hint: Text('Select Driver'),
+                  items: drivers.map((driver) {
+                    return DropdownMenuItem<String>(
+                      value: driver['name'], // The driver name
+                      child: Text(driver['name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedDriver = value; // Update the selected driver
+                    });
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Driver Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: vehicleNumberController,
+                  decoration: InputDecoration(
+                    labelText: 'Vehicle Number',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: fromLocationController,
+                  decoration: InputDecoration(
+                    labelText: 'From Location',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: toLocationController,
+                  decoration: InputDecoration(
+                    labelText: 'To Location',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Amount',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                ListTile(
+                  title: Text("Select Date"),
+                  subtitle: Text(
+                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                  ),
+                  trailing: Icon(Icons.calendar_today),
+                  onTap: () => _selectDate(context),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text("Cancel"),
+                    ),
+                    SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: _addNewTrip,
+                      child: Text("Add Trip"),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void _searchTrips(String query) {
     final results = _convertTripsToMap(DummyData.trips).where((trip) {

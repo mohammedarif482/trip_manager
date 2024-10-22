@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/reports_screen.dart';
+import 'package:tripmanager/View/trucks_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -145,25 +146,34 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              height: 50,
-              margin: EdgeInsets.all(10),
-              padding: EdgeInsets.all(10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(width: 1.0),
-                borderRadius: BorderRadius.all(Radius.circular(10.0)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Vehicles",
-                    style: TextStyle(fontSize: 22),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => TruckScreen(),
                   ),
-                  Icon(Icons.arrow_right)
-                ],
+                );
+              },
+              child: Container(
+                height: 50,
+                margin: EdgeInsets.all(10),
+                padding: EdgeInsets.all(10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(width: 1.0),
+                  borderRadius: BorderRadius.all(Radius.circular(10.0)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Vehicles",
+                      style: TextStyle(fontSize: 22),
+                    ),
+                    Icon(Icons.arrow_right)
+                  ],
+                ),
               ),
             )
           ],
