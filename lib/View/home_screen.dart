@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/reports_screen.dart';
-import 'package:tripmanager/View/trucks_screen.dart';
+import 'package:tripmanager/View/vehicles_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

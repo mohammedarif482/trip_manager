@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/login_screen.dart';
-import 'package:tripmanager/View/trucks_screen.dart';
+import 'package:tripmanager/View/vehicles_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override

@@ -23,6 +23,7 @@ class _TripsScreenState extends State<TripsScreen> {
   final TextEditingController fromLocationController = TextEditingController();
   final TextEditingController toLocationController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
+  final TextEditingController partyController = TextEditingController();
   DateTime selectedDate = DateTime.now();
 
   @override
@@ -177,6 +178,15 @@ class _TripsScreenState extends State<TripsScreen> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 16),
+                TextField(
+                  controller: partyController,
+                  decoration: InputDecoration(
+                    labelText: 'Party Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                SizedBox(height: 16),
                 // DropdownButton for selecting driver
                 DropdownButtonFormField<String>(
                   value: selectedDriver, // Keep track of the selected driver
@@ -221,6 +231,7 @@ class _TripsScreenState extends State<TripsScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+
                 SizedBox(height: 16),
                 TextField(
                   controller: amountController,
