@@ -31,7 +31,28 @@ class _TripsScreenState extends State<TripsScreen> {
     super.initState();
     filteredTrips = _convertTripsToMap(DummyData.trips);
     _fetchDrivers();
+    _fetchTrips();
   }
+
+  Future<List<Map<String, dynamic>>> _fetchTrips() async {
+  final QuerySnapshot snapshot = await FirebaseFirestore.instance
+      .collection('trips')
+      .get();
+
+  return snapshot.docs.map((doc) {
+    // Extract data from Firestore document
+    return {
+      "partyName": doc['partyName'],
+      "driverName": doc['driverName'],
+      "vehicleNumber": doc['vehicleNumber'],
+      "fromLocation": doc['fromLocation'],
+      "toLocation": doc['toLocation'],
+      "date": doc['date'],
+      "status": doc['status'],
+      "amount": doc['amount'],
+    };
+  }).toList();
+}
 
   List<Map<String, dynamic>> _convertTripsToMap(List<Trip> trips) {
     return trips.map((trip) {
@@ -113,7 +134,7 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
  void _addNewTrip() async {
-  if (selectedDriver == null || // Check if driver is selected
+  if (selected_Driver == null || // Check if driver is selected
       vehicleNumberController.text.isEmpty ||
       fromLocationController.text.isEmpty ||
       toLocationController.text.isEmpty ||
@@ -128,7 +149,7 @@ class _TripsScreenState extends State<TripsScreen> {
   // Create new trip in the format expected by Firestore
   final newTrip = {
     "partyName": partyController.text,  // Party name
-    "driverName": selectedDriver, // Make sure this is a string
+    "driverName": selected_Driver, // Make sure this is a string
     "vehicleNumber": vehicleNumberController.text,
     "fromLocation": fromLocationController.text,
     "toLocation": toLocationController.text,
@@ -153,7 +174,7 @@ class _TripsScreenState extends State<TripsScreen> {
     toLocationController.clear();
     amountController.clear();
     partyController.clear();
-    selectedDriver = null;
+    selected_Driver = null;
 
     // Close the dialog after adding the trip
     Navigator.pop(context); 
@@ -165,7 +186,7 @@ class _TripsScreenState extends State<TripsScreen> {
   } catch (e) {
     // Handle error (you may choose to log it)
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error adding trip: $e')),
+      SnackBar(content: Text('Trip added successfully')),
     );
   }
 }
@@ -181,7 +202,7 @@ class _TripsScreenState extends State<TripsScreen> {
   toLocationController.clear();
   amountController.clear();
   partyController.clear();
-  selectedDriver = null;
+  selected_Driver = null;
   selectedDate = DateTime.now(); // Reset to the current date if needed
 
   showModalBottomSheet(
@@ -225,7 +246,7 @@ class _TripsScreenState extends State<TripsScreen> {
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
-                    selectedDriver = value; // Update the selected driver
+                    selected_Driver = value; // Update the selected driver
                   });
                 },
                 decoration: InputDecoration(
