@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tripmanager/Utils/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TruckScreen extends StatefulWidget {
   @override
@@ -8,19 +9,17 @@ class TruckScreen extends StatefulWidget {
 }
 
 class _TruckScreenState extends State<TruckScreen> {
-  @override
   TextEditingController searchController = TextEditingController();
-
   final TextEditingController vehicleNameController = TextEditingController();
   final TextEditingController capacityController = TextEditingController();
   final TextEditingController lenghtController = TextEditingController();
   final TextEditingController widthController = TextEditingController();
   final TextEditingController regNumberController = TextEditingController();
   DateTime selectedDate = DateTime.now();
-  @override
-  void _showAddVehicle() {
-    // Fetch the driver names from Firestore
 
+  List<Map<String, String>> vehicles = [];
+
+  void _showAddVehicle() {
     showModalBottomSheet(
       isScrollControlled: true,
       context: context,
@@ -44,6 +43,7 @@ class _TruckScreenState extends State<TruckScreen> {
                 SizedBox(height: 16),
                 TextField(
                   controller: regNumberController,
+                  inputFormatters: [VehicleNumberFormatter()],
                   decoration: InputDecoration(
                     labelText: 'Registration Number',
                     border: OutlineInputBorder(),
@@ -69,7 +69,7 @@ class _TruckScreenState extends State<TruckScreen> {
                 TextField(
                   controller: lenghtController,
                   decoration: InputDecoration(
-                    labelText: 'Lenght',
+                    labelText: 'Length',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -92,8 +92,33 @@ class _TruckScreenState extends State<TruckScreen> {
                     ),
                     SizedBox(width: 16),
                     ElevatedButton(
-                      onPressed: () {},
-                      child: Text("Add Vehicles"),
+                      onPressed: () async {
+                        final newVehicle = {
+                          'registration': regNumberController.text,
+                          'model': vehicleNameController.text,
+                          'capacity': capacityController.text,
+                          'length': lenghtController.text,
+                          'width': widthController.text,
+                        };
+
+                        // Add to Firestore (if needed)
+                        await FirebaseFirestore.instance.collection('vehicles').add(newVehicle);
+
+                        // Add to local list for display
+                        setState(() {
+                          vehicles.add(newVehicle);
+                        });
+
+                        // Clear inputs
+                        regNumberController.clear();
+                        vehicleNameController.clear();
+                        capacityController.clear();
+                        lenghtController.clear();
+                        widthController.clear();
+
+                        Navigator.pop(context);
+                      },
+                      child: Text("Add Vehicle"),
                     ),
                   ],
                 ),
@@ -106,15 +131,17 @@ class _TruckScreenState extends State<TruckScreen> {
     );
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.accentColor,
       floatingActionButton: FloatingActionButton.extended(
-          onPressed: _showAddVehicle,
-          icon: Icon(Icons.add),
-          label: Text("Add Vehicle"),
-          backgroundColor: AppColors.primaryColor,
-          foregroundColor: AppColors.accentColor),
+        onPressed: _showAddVehicle,
+        icon: Icon(Icons.add),
+        label: Text("Add Vehicle"),
+        backgroundColor: AppColors.primaryColor,
+        foregroundColor: AppColors.accentColor,
+      ),
       appBar: AppBar(
         backgroundColor: AppColors.accentColor,
         title: Text('Your Vehicles'),
@@ -201,43 +228,18 @@ class _TruckScreenState extends State<TruckScreen> {
       ),
     );
   }
-
-  final List<Map<String, String>> vehicles = [
-    {
-      'registration': 'KL 57 S 5296',
-      'model': 'Tata LPT 1916',
-      'length': '6m',
-      'width': '13m',
-      'capacity': '20m'
-    },
-    {
-      'registration': 'MH 12 AB 1234',
-      'model': 'Ashok Leyland 2518',
-      'length': '7m',
-      'width': '14m',
-      'capacity': '25m'
-    },
-    {
-      'registration': 'TN 09 CD 5678',
-      'model': 'Eicher Pro 3015',
-      'length': '5m',
-      'width': '12m',
-      'capacity': '18m'
-    },
-  ];
 }
 
+// VehicleNumberFormatter to format input
 class VehicleNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
-    // Regex to match the expected format (XX 00 XX 0000)
-    final regex = RegExp(r'([A-Z]{2})(\d{0,2})([A-Z]{0,2})(\d{0,4})');
-    final match = regex.firstMatch(newValue.text.toUpperCase());
+    final regex = RegExp(r'^([A-Z]{0,2})(\d{0,2})([A-Z]{0,2})(\d{0,4})$');
+    final match = regex.firstMatch(newValue.text.toUpperCase().replaceAll(' ', ''));
 
     String formattedText = '';
     if (match != null) {
-      // Build the formatted text based on the regex match
       final part1 = match.group(1) ?? '';
       final part2 = match.group(2) ?? '';
       final part3 = match.group(3) ?? '';
@@ -255,3 +257,4 @@ class VehicleNumberFormatter extends TextInputFormatter {
     );
   }
 }
+
