@@ -18,6 +18,36 @@ class _TruckScreenState extends State<TruckScreen> {
   DateTime selectedDate = DateTime.now();
 
   List<Map<String, String>> vehicles = [];
+  Future<List<Map<String, dynamic>>>? _vehiclesData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVehicles(); // Initial load of vehicles
+  }
+
+  // Function to fetch vehicles from Firestore
+  Future<List<Map<String, dynamic>>> _fetchVehicles() async {
+    final QuerySnapshot snapshot =
+        await FirebaseFirestore.instance.collection('vehicles').get();
+
+    return snapshot.docs.map((doc) {
+      return {
+        "capacity": doc['capacity'],
+        "length": doc['length'],
+        "model": doc['model'],
+        "registration": doc['registration'],
+        "width": doc['width'],
+      };
+    }).toList();
+  }
+
+  // Function to refresh the vehicle list
+  Future<void> _loadVehicles() async {
+    setState(() {
+      _vehiclesData = _fetchVehicles(); // Reload vehicles
+    });
+  }
 
   void _showAddVehicle() {
     showModalBottomSheet(
@@ -102,7 +132,9 @@ class _TruckScreenState extends State<TruckScreen> {
                         };
 
                         // Add to Firestore (if needed)
-                        await FirebaseFirestore.instance.collection('vehicles').add(newVehicle);
+                        await FirebaseFirestore.instance
+                            .collection('vehicles')
+                            .add(newVehicle);
 
                         // Add to local list for display
                         setState(() {
@@ -146,97 +178,129 @@ class _TruckScreenState extends State<TruckScreen> {
         backgroundColor: AppColors.accentColor,
         title: Text('Your Vehicles'),
       ),
-      body: ListView.builder(
-        itemCount: vehicles.length,
-        itemBuilder: (context, index) {
-          return Card(
-            elevation: 4,
-            color: AppColors.accentColor,
-            margin: EdgeInsets.all(10),
-            child: Padding(
-              padding: EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        vehicles[index]['registration']!,
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Icon(Icons.local_shipping),
-                    ],
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    vehicles[index]['model']!,
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
+      body: Column(
+        children: [
+          Expanded(
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _vehiclesData,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error fetching vehicles.'));
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(child: Text('No vehicles available.'));
+                } else {
+                  final vehicles = snapshot.data!;
+
+                  return RefreshIndicator(
+                    onRefresh: _loadVehicles, // Swipe down to refresh
+                    child: ListView.builder(
+                      itemCount: vehicles.length,
+                      itemBuilder: (context, index) {
+                        final vehicle = vehicles[index];
+                        return Card(
+                          elevation: 4,
+                          color: AppColors.accentColor,
+                          margin: EdgeInsets.all(10),
+                          child: Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      vehicles[index]['registration']!,
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    Icon(Icons.local_shipping),
+                                  ],
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  vehicles[index]['model']!,
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Length'),
+                                    Text(vehicles[index]['length']!),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Width'),
+                                    Text(vehicles[index]['width']!),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Capacity'),
+                                    Text(vehicles[index]['capacity']!),
+                                  ],
+                                ),
+                                SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () {},
+                                      child: Text('Edit'),
+                                    ),
+                                    SizedBox(width: 10),
+                                    ElevatedButton(
+                                      onPressed: () {},
+                                      child: Text('Delete'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Length'),
-                      Text(vehicles[index]['length']!),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Width'),
-                      Text(vehicles[index]['width']!),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Capacity'),
-                      Text(vehicles[index]['capacity']!),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {},
-                        child: Text('Edit'),
-                      ),
-                      SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: () {},
-                        child: Text('Delete'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                  );
+                }
+              },
             ),
-          );
-        },
+          ),
+          // SizedBox(
+          //   height: 70,
+          // )
+        ],
       ),
     );
   }
 }
 
-// VehicleNumberFormatter to format input
 class VehicleNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
     final regex = RegExp(r'^([A-Z]{0,2})(\d{0,2})([A-Z]{0,2})(\d{0,4})$');
-    final match = regex.firstMatch(newValue.text.toUpperCase().replaceAll(' ', ''));
+    final match =
+        regex.firstMatch(newValue.text.toUpperCase().replaceAll(' ', ''));
 
     String formattedText = '';
     if (match != null) {
@@ -257,4 +321,3 @@ class VehicleNumberFormatter extends TextInputFormatter {
     );
   }
 }
-
