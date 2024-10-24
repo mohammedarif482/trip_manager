@@ -165,12 +165,12 @@ class _PartyDetailState extends State<PartyDetail> {
               child: OutlinedButton(
                 onPressed: () {},
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.green),
+                  side: const BorderSide(color: AppColors.secondaryColor),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 child: const Text(
                   'Complete Trip',
-                  style: TextStyle(color: Colors.green),
+                  style: TextStyle(color: AppColors.secondaryColor),
                 ),
               ),
             ),
@@ -179,7 +179,7 @@ class _PartyDetailState extends State<PartyDetail> {
               child: ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: AppColors.primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 child: const Text(
@@ -222,14 +222,14 @@ class _PartyDetailState extends State<PartyDetail> {
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Note'),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.blue,
+                        foregroundColor:AppColors.primaryColor,
                       ),
                     ),
                     const Spacer(),
                     OutlinedButton(
                       onPressed: () {},
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.blue),
+                        side: const BorderSide(color:AppColors.primaryColor),
                       ),
                       child: const Text('Request Money'),
                     ),
@@ -255,12 +255,12 @@ class _PartyDetailState extends State<PartyDetail> {
                 Text(
                   'Add load to this Trip',
                   style: TextStyle(
-                    color: Colors.blue,
+                    color:AppColors.primaryColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Spacer(),
-                Icon(Icons.chevron_right, color: Colors.blue),
+                Icon(Icons.chevron_right, color:AppColors.primaryColor),
               ],
             ),
           ),
@@ -282,7 +282,7 @@ Widget _buildAmountRow(String label, String amount, bool isEditable) {
             Text(amount),
             if (isEditable) ...[
               const SizedBox(width: 8),
-              const Icon(Icons.edit, size: 16, color: Colors.blue),
+              const Icon(Icons.edit, size: 16, color:AppColors.primaryColor),
             ],
           ],
         ),
@@ -301,7 +301,7 @@ Widget _buildActionLink(String text) {
         minimumSize: const Size(0, 24),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      child: Text(text, style: const TextStyle(color: Colors.blue)),
+      child: Text(text, style: const TextStyle(color: AppColors.primaryColor)),
     ),
   );
 }

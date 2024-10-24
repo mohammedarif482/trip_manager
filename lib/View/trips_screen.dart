@@ -4,6 +4,7 @@ import 'package:tripmanager/Model/temp_data.dart';
 import 'package:tripmanager/Model/trip_model.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/Widgets/trip_card.dart';
+import 'package:tripmanager/View/trip_view_screen.dart';
 
 class TripsScreen extends StatefulWidget {
   @override
@@ -25,34 +26,67 @@ class _TripsScreenState extends State<TripsScreen> {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController partyController = TextEditingController();
   DateTime selectedDate = DateTime.now();
-
+  Future<List<Map<String, dynamic>>>? _tripsData;
+  Future<List<Map<String, dynamic>>>? _tripsCompletedData;
   @override
   void initState() {
     super.initState();
     filteredTrips = _convertTripsToMap(DummyData.trips);
     _fetchDrivers();
-    _fetchTrips();
+    _tripsData = _fetchTrips();
+    _tripsCompletedData = _fetchCompletedTrips();
   }
 
   Future<List<Map<String, dynamic>>> _fetchTrips() async {
-  final QuerySnapshot snapshot = await FirebaseFirestore.instance
-      .collection('trips')
-      .get();
+    final QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('trips')
+        .where('status',
+            isNotEqualTo: 'Trip Completed') // Filter by 'Trip Completed'
+        .get();
 
-  return snapshot.docs.map((doc) {
-    // Extract data from Firestore document
-    return {
-      "partyName": doc['partyName'],
-      "driverName": doc['driverName'],
-      "vehicleNumber": doc['vehicleNumber'],
-      "fromLocation": doc['fromLocation'],
-      "toLocation": doc['toLocation'],
-      "date": doc['date'],
-      "status": doc['status'],
-      "amount": doc['amount'],
-    };
-  }).toList();
-}
+    return snapshot.docs.map((doc) {
+      // Extract data from Firestore document
+      return {
+        "partyName": doc['partyName'],
+        "driverName": doc['driverName'],
+        "vehicleNumber": doc['vehicleNumber'],
+        "fromLocation": doc['fromLocation'],
+        "toLocation": doc['toLocation'],
+        "date": doc['date'],
+        "status": doc['status'],
+        "amount": doc['amount'],
+      };
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
+    final QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('trips')
+        .where('status',
+            isEqualTo: 'Trip Completed') // Filter by 'Trip Completed'
+        .get();
+
+    return snapshot.docs.map((doc) {
+      // Extract data from Firestore document
+      return {
+        "partyName": doc['partyName'],
+        "driverName": doc['driverName'],
+        "vehicleNumber": doc['vehicleNumber'],
+        "fromLocation": doc['fromLocation'],
+        "toLocation": doc['toLocation'],
+        "date": doc['date'],
+        "status": doc['status'],
+        "amount": doc['amount'],
+      };
+    }).toList();
+  }
+
+  Future<void> _loadTrips() async {
+    setState(() {
+      _tripsData = _fetchTrips(); // Reload trips
+      _tripsCompletedData = _fetchCompletedTrips();
+    });
+  }
 
   List<Map<String, dynamic>> _convertTripsToMap(List<Trip> trips) {
     return trips.map((trip) {
@@ -133,195 +167,226 @@ class _TripsScreenState extends State<TripsScreen> {
     });
   }
 
- void _addNewTrip() async {
-  if (selected_Driver == null || // Check if driver is selected
-      vehicleNumberController.text.isEmpty ||
-      fromLocationController.text.isEmpty ||
-      toLocationController.text.isEmpty ||
-      amountController.text.isEmpty ||
-      partyController.text.isEmpty) {  // Added party name check
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please fill all fields')),
-    );
-    return;
+  void _addNewTrip() async {
+    if (selected_Driver == null || // Check if driver is selected
+        vehicleNumberController.text.isEmpty ||
+        fromLocationController.text.isEmpty ||
+        toLocationController.text.isEmpty ||
+        amountController.text.isEmpty ||
+        partyController.text.isEmpty) {
+      // Added party name check
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Please fill all fields')),
+      // );
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          // Start a timer to close the dialog after 2 seconds
+          Future.delayed(Duration(seconds: 2), () {
+            Navigator.of(context).pop(true); // Close the dialog
+          });
+
+          return AlertDialog(
+            content: Text('Please fill all fields'),
+          );
+        },
+      );
+      return;
+    }
+
+    // Create new trip in the format expected by Firestore
+    final newTrip = {
+      "partyName": partyController.text, // Party name
+      "driverName": selected_Driver, // Make sure this is a string
+      "vehicleNumber": vehicleNumberController.text,
+      "fromLocation": fromLocationController.text,
+      "toLocation": toLocationController.text,
+      "date":
+          "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
+      "status": "Trip Started",
+      "amount": "₹ ${amountController.text}",
+      "createdAt": FieldValue.serverTimestamp(), // Add a timestamp
+    };
+
+    // Store the new trip in Firestore
+    try {
+      await FirebaseFirestore.instance.collection('trips').add(newTrip);
+
+      setState(() {
+        filteredTrips.insert(0, newTrip); // Optionally update the local list
+      });
+
+      // Clear controllers after successful storage
+      vehicleNumberController.clear();
+      fromLocationController.clear();
+      toLocationController.clear();
+      amountController.clear();
+      partyController.clear();
+      selected_Driver = null;
+
+      // Close the dialog after adding the trip
+      Navigator.pop(context);
+
+      // Show success message
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Trip added successfully')),
+      // );
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          // Start a timer to close the dialog after 2 seconds
+          Future.delayed(Duration(seconds: 2), () {
+            Navigator.of(context).pop(true); // Close the dialog
+          });
+
+          return AlertDialog(
+            content: Text('Trip added successfully'),
+          );
+        },
+      );
+    } catch (e) {
+      // Handle error (you may choose to log it)
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          // Start a timer to close the dialog after 2 seconds
+          Future.delayed(Duration(seconds: 2), () {
+            Navigator.of(context).pop(true); // Close the dialog
+          });
+
+          return AlertDialog(
+            content: Text('Trip added successfully'),
+          );
+        },
+      );
+    }
   }
 
-  // Create new trip in the format expected by Firestore
-  final newTrip = {
-    "partyName": partyController.text,  // Party name
-    "driverName": selected_Driver, // Make sure this is a string
-    "vehicleNumber": vehicleNumberController.text,
-    "fromLocation": fromLocationController.text,
-    "toLocation": toLocationController.text,
-    "date":
-        "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
-    "status": "Trip Started",
-    "amount": "₹ ${amountController.text}",
-    "createdAt": FieldValue.serverTimestamp(), // Add a timestamp
-  };
-
-  // Store the new trip in Firestore
-  try {
-    await FirebaseFirestore.instance.collection('trips').add(newTrip);
-
-    setState(() {
-      filteredTrips.insert(0, newTrip); // Optionally update the local list
-    });
-
-    // Clear controllers after successful storage
+  void _showAddTripSheet() {
+    // Clear previous values before showing the dialog
     vehicleNumberController.clear();
     fromLocationController.clear();
     toLocationController.clear();
     amountController.clear();
     partyController.clear();
     selected_Driver = null;
+    selectedDate = DateTime.now(); // Reset to the current date if needed
 
-    // Close the dialog after adding the trip
-    Navigator.pop(context); 
-
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Trip added successfully')),
-    );
-  } catch (e) {
-    // Handle error (you may choose to log it)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Trip added successfully')),
+    showModalBottomSheet(
+      isScrollControlled: true,
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Add New Trip",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: partyController,
+                  decoration: InputDecoration(
+                    labelText: 'Party Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                // DropdownButton for selecting driver
+                DropdownButtonFormField<String>(
+                  value: selectedDriver, // Keep track of the selected driver
+                  hint: Text('Select Driver'),
+                  items: drivers.map((driver) {
+                    return DropdownMenuItem<String>(
+                      value: driver['name'], // The driver name
+                      child: Text(driver['name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selected_Driver = value; // Update the selected driver
+                    });
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Driver Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: vehicleNumberController,
+                  decoration: InputDecoration(
+                    labelText: 'Vehicle Number',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: fromLocationController,
+                  decoration: InputDecoration(
+                    labelText: 'From Location',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: toLocationController,
+                  decoration: InputDecoration(
+                    labelText: 'To Location',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Amount',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                ListTile(
+                  title: Text("Select Date"),
+                  subtitle: Text(
+                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                  ),
+                  trailing: Icon(Icons.calendar_today),
+                  onTap: () => _selectDate(context),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text("Cancel"),
+                    ),
+                    SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: _addNewTrip,
+                      child: Text("Add Trip"),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
-}
-
-
-
-
-
-  void _showAddTripSheet() {
-  // Clear previous values before showing the dialog
-  vehicleNumberController.clear();
-  fromLocationController.clear();
-  toLocationController.clear();
-  amountController.clear();
-  partyController.clear();
-  selected_Driver = null;
-  selectedDate = DateTime.now(); // Reset to the current date if needed
-
-  showModalBottomSheet(
-    isScrollControlled: true,
-    context: context,
-    builder: (context) {
-      return Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 16,
-          right: 16,
-          top: 16,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Add New Trip",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: partyController,
-                decoration: InputDecoration(
-                  labelText: 'Party Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              // DropdownButton for selecting driver
-              DropdownButtonFormField<String>(
-                value: selectedDriver, // Keep track of the selected driver
-                hint: Text('Select Driver'),
-                items: drivers.map((driver) {
-                  return DropdownMenuItem<String>(
-                    value: driver['name'], // The driver name
-                    child: Text(driver['name']),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selected_Driver = value; // Update the selected driver
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: 'Driver Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: vehicleNumberController,
-                decoration: InputDecoration(
-                  labelText: 'Vehicle Number',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: fromLocationController,
-                decoration: InputDecoration(
-                  labelText: 'From Location',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: toLocationController,
-                decoration: InputDecoration(
-                  labelText: 'To Location',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Amount',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              ListTile(
-                title: Text("Select Date"),
-                subtitle: Text(
-                  "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                ),
-                trailing: Icon(Icons.calendar_today),
-                onTap: () => _selectDate(context),
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("Cancel"),
-                  ),
-                  SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: _addNewTrip,
-                    child: Text("Add Trip"),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-
-
 
   void _searchTrips(String query) {
     final results = _convertTripsToMap(DummyData.trips).where((trip) {
@@ -568,16 +633,56 @@ class _TripsScreenState extends State<TripsScreen> {
           ),
           body: TabBarView(
             children: [
-              ListView.builder(
-                itemCount: filteredTrips.length,
-                itemBuilder: (context, index) {
-                  return TripCard(tripData: filteredTrips[index]);
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _tripsData,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error fetching trips.'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('No completed trips available.'));
+                  } else {
+                    final trips = snapshot.data!;
+
+                    return RefreshIndicator(
+                      onRefresh: _loadTrips, // Call _loadTrips() on swipe down
+                      child: ListView.builder(
+                        itemCount: trips.length,
+                        itemBuilder: (context, index) {
+                          final trip = trips[index];
+
+                          return TripCard(trip: trip);
+                        },
+                      ),
+                    );
+                  }
                 },
               ),
-              ListView.builder(
-                itemCount: filteredTrips.length,
-                itemBuilder: (context, index) {
-                  return TripCard(tripData: filteredTrips[index]);
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: _tripsCompletedData,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error fetching trips.'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('No completed trips available.'));
+                  } else {
+                    final trips = snapshot.data!;
+
+                    return RefreshIndicator(
+                      onRefresh: _loadTrips, // Call _loadTrips() on swipe down
+                      child: ListView.builder(
+                        itemCount: trips.length,
+                        itemBuilder: (context, index) {
+                          final trip = trips[index];
+
+                          return TripCard(trip: trip);
+                        },
+                      ),
+                    );
+                  }
                 },
               ),
             ],

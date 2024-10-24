@@ -3,9 +3,12 @@ import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/trip_view_screen.dart';
 
 class TripCard extends StatelessWidget {
-  final Map<String, dynamic> tripData;
+  const TripCard({
+    super.key,
+    required this.trip,
+  });
 
-  const TripCard({Key? key, required this.tripData}) : super(key: key);
+  final Map<String, dynamic> trip;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +37,7 @@ class TripCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      tripData['name'],
+                      trip['driverName'],
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[800],
@@ -42,7 +45,7 @@ class TripCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      tripData['amount'],
+                      trip['amount'],
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
@@ -52,24 +55,36 @@ class TripCard extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: 8),
-                Text(
-                  tripData['vehicleNumber'],
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      trip['vehicleNumber'],
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Text(
+                      trip['partyName'],
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
                 ),
                 SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      tripData['fromLocation'],
+                      trip['fromLocation'],
                       style: TextStyle(fontSize: 16),
                     ),
                     Icon(Icons.arrow_right_alt_rounded),
                     Text(
-                      tripData['toLocation'],
+                      trip['toLocation'],
                       style: TextStyle(fontSize: 16),
                     ),
                   ],
@@ -79,7 +94,7 @@ class TripCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      tripData['date'],
+                      trip['date'],
                       style: TextStyle(
                         color: Colors.grey,
                         fontSize: 14,
@@ -91,7 +106,7 @@ class TripCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      tripData['status'],
+                      trip['status'],
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     SizedBox(width: 8),
