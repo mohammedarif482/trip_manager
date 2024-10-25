@@ -168,7 +168,9 @@ class _TripsScreenState extends State<TripsScreen> {
     });
   }
 
-  void _addNewTrip() async {
+  
+
+ void _addNewTrip() async {
   if (selected_Driver == null || 
       selectedVehicleNumber == null || 
       fromLocationController.text.isEmpty ||
@@ -190,7 +192,6 @@ class _TripsScreenState extends State<TripsScreen> {
     return;
   }
 
-  // Create the new trip map
   final newTrip = {
     "partyName": partyController.text,
     "driverName": selected_Driver.toString(),
@@ -203,16 +204,34 @@ class _TripsScreenState extends State<TripsScreen> {
     "createdAt": FieldValue.serverTimestamp(),
   };
 
-  // Store the new trip in Firestore
   try {
+    // Add the new trip to the trips collection
     await FirebaseFirestore.instance.collection('trips').add(newTrip);
 
-    // Immediately update the UI by adding the new trip to the list
-    setState(() {
-      filteredTrips.insert(0, newTrip); // Add the new trip to the list dynamically
-    });
+    // Check if the party already exists in the partyreport collection
+    final partyReportQuery = await FirebaseFirestore.instance
+        .collection('partyreport')
+        .where('partyName', isEqualTo: partyController.text)
+        .get();
 
-    // Clear controllers after successful storage
+    if (partyReportQuery.docs.isNotEmpty) {
+      // If the party already exists, increment the amount
+      DocumentSnapshot existingParty = partyReportQuery.docs.first;
+      double currentAmount = double.parse(existingParty['amount'].replaceAll('₹ ', ''));
+      double newAmount = currentAmount + double.parse(amountController.text.replaceAll('₹ ', ''));
+
+      await FirebaseFirestore.instance.collection('partyreport').doc(existingParty.id).update({
+        'amount': '₹ $newAmount',
+      });
+    } else {
+      // If it doesn't exist, create a new document in partyreport
+      await FirebaseFirestore.instance.collection('partyreport').add({
+        'partyName': partyController.text,
+        'amount': '₹ ${amountController.text}',
+      });
+    }
+
+    // Clear controllers and reset selections after adding a trip
     vehicleNumberController.clear();
     fromLocationController.clear();
     toLocationController.clear();
@@ -221,7 +240,6 @@ class _TripsScreenState extends State<TripsScreen> {
     selected_Driver = null;
     selectedVehicleNumber = null;
 
-    // Close the modal bottom sheet or any open dialog
     Navigator.pop(context); // Close the modal
 
     // Show success message after closing the modal
@@ -232,25 +250,28 @@ class _TripsScreenState extends State<TripsScreen> {
           Navigator.of(context).pop(true); // Close the success dialog after 2 seconds
         });
         return AlertDialog(
-          content: Text('Trip added successfully'),
+          content: Text('Trip successfully added!'),
         );
       },
     );
   } catch (e) {
-    // Catch error but still show success message
+    print("Error adding trip: $e");
     showDialog(
       context: context,
       builder: (BuildContext context) {
         Future.delayed(Duration(seconds: 2), () {
-          Navigator.of(context).pop(true); // Close the error dialog after 2 seconds
+          Navigator.of(context).pop(true);
         });
         return AlertDialog(
-          content: Text('Trip added successfully'),
+          content: Text('Failed to add trip'),
         );
       },
     );
   }
 }
+
+
+
 
 
 
