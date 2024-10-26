@@ -16,7 +16,9 @@ class TripCard extends StatelessWidget {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => TripViewScreen(),
+            builder: (context) => TripDetailScreen(
+              tripId: trip['tripId'],
+            ),
           ),
         );
       },
