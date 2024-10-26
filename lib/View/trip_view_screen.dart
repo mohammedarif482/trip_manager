@@ -66,6 +66,7 @@ class _TripDetailScreenState extends State<TripDetailScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: PartyDetail(
                   tripData: tripData,
+                  tripId: widget.tripId,
                 ),
               ),
               Container(
@@ -93,14 +94,18 @@ class _TripDetailScreenState extends State<TripDetailScreen>
 
 class PartyDetail extends StatefulWidget {
   final Map<String, dynamic> tripData;
+  final String tripId;
 
-  const PartyDetail({Key? key, required this.tripData}) : super(key: key);
+  const PartyDetail({Key? key, required this.tripData, required this.tripId})
+      : super(key: key);
 
   @override
   State<PartyDetail> createState() => _PartyDetailState();
 }
 
 int activeStep = 1;
+final TextEditingController expenseController = TextEditingController();
+final TextEditingController amountController = TextEditingController();
 
 class _PartyDetailState extends State<PartyDetail> {
   @override
@@ -273,18 +278,21 @@ class _PartyDetailState extends State<PartyDetail> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  _buildAmountRow('Freight Amount', '₹15,000', true),
-                  _buildAmountRow('(-) Advance', '₹0', false),
+                  _buildAmountRow(
+                      'Freight Amount', widget.tripData['amount'], true),
+                  // _buildAmountRow('(-) Advance', '₹0', false),
                   const SizedBox(height: 4),
-                  _buildActionLink('Add Advance'),
-                  _buildAmountRow('(+) Charges', '₹0', false),
-                  const SizedBox(height: 4),
-                  _buildActionLink('Add Charges'),
-                  _buildAmountRow('(-) Payments', '₹0', false),
-                  const SizedBox(height: 4),
-                  _buildActionLink('Add Payment'),
+                  // _buildActionLink('Add Advance'),
+                  // _buildAmountRow('(+) Charges', '₹0', false),
+                  const SizedBox(height: 8),
+                  _buildActionLink('Expenses', () => _showAddChargesDialog()),
+                  _buildExpenses(),
+                  const SizedBox(height: 8),
+
+                  // const SizedBox(height: 4),
+                  // _buildActionLink('Add Payment'),
                   const Divider(height: 32),
-                  _buildAmountRow('Pending Balance', '₹15,000', false),
+                  // _buildAmountRow('Pending Balance', '₹15,000', false),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -340,6 +348,165 @@ class _PartyDetailState extends State<PartyDetail> {
       ),
     );
   }
+
+  Widget _buildExpenses() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('trips')
+          .doc(widget.tripId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          // No document found or doesn't exist
+          return _buildAmountRow('Expenses', '₹0', false);
+        }
+
+        // Document exists
+        var tripData = snapshot.data!.data() as Map<String, dynamic>;
+        List expenses =
+            tripData.containsKey('expenses') ? tripData['expenses'] : [];
+        // Calculate total expenses
+
+        String cleanedString =
+            tripData['amount'].replaceAll(RegExp(r'[^0-9]'), '');
+        double amount = double.parse(cleanedString);
+        double totalExpense = expenses.fold(
+            0.0, (sum, expense) => sum + (expense['amount'] ?? 0.0));
+
+        // Calculate pending balance
+        double pendingBalance = amount - totalExpense;
+
+        if (expenses.isEmpty) {
+          return _buildAmountRow('Expenses', '₹0', false);
+        }
+
+        return Column(
+          children: [
+            ...expenses.map((expense) {
+              return _buildAmountRow(
+                expense['expense'],
+                '₹${expense['amount']}',
+                false,
+              );
+            }).toList(),
+            _buildAmountRow('Total Expense', '₹$totalExpense', false),
+            const Divider(height: 32),
+            _buildAmountRow('Pending Balance', '₹$pendingBalance', false),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildActionLink(String text, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            text,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Icon(Icons.add, color: AppColors.primaryColor, size: 20),
+        ],
+      ),
+    );
+  }
+
+  void _showAddChargesDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Add Charges'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: expenseController,
+                decoration: const InputDecoration(
+                  labelText: 'Expense',
+                ),
+              ),
+              TextField(
+                controller: amountController,
+                decoration: const InputDecoration(
+                  labelText: 'Amount',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                _addChargeToFirestore();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _addChargeToFirestore() async {
+    String expense = expenseController.text.trim();
+    String amount = amountController.text.trim();
+    String tripId = widget.tripId;
+
+    if (expense.isNotEmpty && amount.isNotEmpty) {
+      try {
+        DocumentReference tripDocRef =
+            FirebaseFirestore.instance.collection('trips').doc(tripId);
+        DocumentSnapshot docSnapshot = await tripDocRef.get();
+
+        if (docSnapshot.exists) {
+          await tripDocRef.update({
+            'expenses': FieldValue.arrayUnion([
+              {
+                'expense': expense,
+                'amount': double.parse(amount),
+              }
+            ])
+          });
+        } else {
+          await tripDocRef.set({
+            'charges': [
+              {
+                'expense': expense,
+                'amount': double.parse(amount),
+              }
+            ],
+          });
+        }
+
+        expenseController.clear();
+        amountController.clear();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Charge added successfully!')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error adding charge: $e')),
+        );
+      }
+    }
+  }
 }
 
 Widget _buildAmountRow(String label, String amount, bool isEditable) {
@@ -348,7 +515,12 @@ Widget _buildAmountRow(String label, String amount, bool isEditable) {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label),
+        Text(
+          label,
+          style: TextStyle(
+              // fontWeight: FontWeight.bold,
+              ),
+        ),
         Row(
           children: [
             Text(amount),

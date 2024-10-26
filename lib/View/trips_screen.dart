@@ -231,14 +231,12 @@ class _TripsScreenState extends State<TripsScreen> {
           'amount': '₹ $newAmount',
         });
       } else {
-        // If it doesn't exist, create a new document in partyreport
         await FirebaseFirestore.instance.collection('partyreport').add({
           'partyName': partyController.text,
           'amount': '₹ ${amountController.text}',
         });
       }
 
-      // Clear controllers and reset selections after adding a trip
       vehicleNumberController.clear();
       fromLocationController.clear();
       toLocationController.clear();
