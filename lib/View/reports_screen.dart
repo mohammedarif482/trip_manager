@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart'; // Import for currency formatting
+import 'package:intl/intl.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -42,10 +42,18 @@ class ReportsScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  ReportTilteCard(title: "Party Revenue", icon: Icons.report, onTap: () {}),
-                  ReportTilteCard(title: "Party Balance", icon: Icons.report, onTap: () {}),
-                  ReportTilteCard(title: "Supplier Balance", icon: Icons.report, onTap: () {}),
-                  ReportTilteCard(title: "Transaction Report", icon: Icons.report, onTap: () {}),
+                  ReportTilteCard(
+                      title: "Party Revenue", icon: Icons.report, onTap: () {}),
+                  ReportTilteCard(
+                      title: "Party Balance", icon: Icons.report, onTap: () {}),
+                  ReportTilteCard(
+                      title: "Supplier Balance",
+                      icon: Icons.report,
+                      onTap: () {}),
+                  ReportTilteCard(
+                      title: "Transaction Report",
+                      icon: Icons.report,
+                      onTap: () {}),
                 ],
               ),
             ),
@@ -95,7 +103,8 @@ class ReportTilteCard extends StatelessWidget {
 
 class TruckRevenueReportScreen extends StatefulWidget {
   @override
-  _TruckRevenueReportScreenState createState() => _TruckRevenueReportScreenState();
+  _TruckRevenueReportScreenState createState() =>
+      _TruckRevenueReportScreenState();
 }
 
 class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
@@ -112,45 +121,63 @@ class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
     return formatter.format(amount);
   }
 
+  // Helper method to safely convert dynamic to int
+  int safeParseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.round();
+    if (value is String) {
+      return int.tryParse(value.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+    }
+    return 0;
+  }
+
   Future<List<TruckReport>> fetchTruckReports() async {
     List<TruckReport> truckReports = [];
 
-    // Fetch all vehicles
-    QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance.collection('vehicles').get();
+    try {
+      QuerySnapshot vehicleSnapshot =
+          await FirebaseFirestore.instance.collection('vehicles').get();
 
-    for (var vehicleDoc in vehicleSnapshot.docs) {
-      String truckNo = vehicleDoc['registration'];
-      int totalRevenue = 0;
-      int totalExpenses = 0;
+      for (var vehicleDoc in vehicleSnapshot.docs) {
+        String truckNo = vehicleDoc['registration'] ?? '';
+        int totalRevenue = 0;
+        int totalExpenses = 0;
 
-      // Fetch all trips for the current vehicle
-      QuerySnapshot tripSnapshot = await FirebaseFirestore.instance
-          .collection('trips')
-          .where('vehicleNumber', isEqualTo: truckNo)
-          .get();
+        QuerySnapshot tripSnapshot = await FirebaseFirestore.instance
+            .collection('trips')
+            .where('vehicleNumber', isEqualTo: truckNo)
+            .get();
 
-      for (var tripDoc in tripSnapshot.docs) {
-        // Parse trip amount safely
-        int tripAmount = int.parse(tripDoc['amount'].toString().replaceAll(RegExp(r'[^\d]'), ''));
-        totalRevenue += tripAmount;
+        for (var tripDoc in tripSnapshot.docs) {
+          Map<String, dynamic> tripData =
+              tripDoc.data() as Map<String, dynamic>;
 
-        // Check if 'expenses' exists and is a List
-        final Map<String, dynamic>? data = tripDoc.data() as Map<String, dynamic>?;
-        if (data != null && data.containsKey('expenses') && data['expenses'] is List) {
-          List expenses = data['expenses'];
+          // Safely parse trip amount
+          totalRevenue += safeParseInt(tripData['amount']);
 
-          // Sum the amounts in the 'expenses' array
-          for (var expense in expenses) {
-            if (expense is Map && expense.containsKey('amount')) {
-              int expenseAmount = expense['amount'];
-              totalExpenses += expenseAmount;
+          // Safely handle expenses
+          if (tripData.containsKey('expenses') &&
+              tripData['expenses'] is List) {
+            List expenses = tripData['expenses'];
+            for (var expense in expenses) {
+              if (expense is Map) {
+                totalExpenses += safeParseInt(expense['amount']);
+              }
             }
           }
         }
-      }
 
-      int profit = totalRevenue - totalExpenses;
-      truckReports.add(TruckReport(truckNo: truckNo, revenue: totalRevenue, expenses: totalExpenses, profit: profit));
+        int profit = totalRevenue - totalExpenses;
+        truckReports.add(TruckReport(
+          truckNo: truckNo,
+          revenue: totalRevenue,
+          expenses: totalExpenses,
+          profit: profit,
+        ));
+      }
+    } catch (e) {
+      print('Error fetching truck reports: $e');
     }
 
     return truckReports;
@@ -171,54 +198,54 @@ class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
             return Center(child: Text("No data available"));
           }
 
-          // Summarize total revenue, expenses, and profit
-          int totalRevenue = snapshot.data!.fold(0, (sum, item) => sum + item.revenue);
-          int totalExpenses = snapshot.data!.fold(0, (sum, item) => sum + item.expenses);
-          int totalProfit = snapshot.data!.fold(0, (sum, item) => sum + item.profit);
+          int totalRevenue =
+              snapshot.data!.fold(0, (sum, item) => sum + item.revenue);
+          int totalExpenses =
+              snapshot.data!.fold(0, (sum, item) => sum + item.expenses);
+          int totalProfit =
+              snapshot.data!.fold(0, (sum, item) => sum + item.profit);
 
           return Column(
             children: [
-              // Summary Row
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    SummaryCard(title: 'Total Revenue', value: formatCurrency(totalRevenue)),
-                    SummaryCard(title: 'Total Expenses', value: formatCurrency(totalExpenses)),
-                    SummaryCard(title: 'Total Profit', value: formatCurrency(totalProfit)),
+                    SummaryCard(
+                        title: 'Total Revenue',
+                        value: formatCurrency(totalRevenue)),
+                    SummaryCard(
+                        title: 'Total Expenses',
+                        value: formatCurrency(totalExpenses)),
+                    SummaryCard(
+                        title: 'Total Profit',
+                        value: formatCurrency(totalProfit)),
                   ],
                 ),
               ),
-              // Data Table
               Expanded(
                 child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
                   child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(Colors.red), // Header background color
+                    horizontalMargin: 6,
+                    headingRowColor: MaterialStateProperty.all(Colors.red),
                     columns: [
                       DataColumn(
-                        label: Text(
-                          'Truck No',
-                          style: TextStyle(color: Colors.white), // Header text color
-                        ),
+                        label: Text('Truck No',
+                            style: TextStyle(color: Colors.white)),
                       ),
                       DataColumn(
-                        label: Text(
-                          'Revenue',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        label: Text('Revenue',
+                            style: TextStyle(color: Colors.white)),
                       ),
                       DataColumn(
-                        label: Text(
-                          'Expenses',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        label: Text('Expenses',
+                            style: TextStyle(color: Colors.white)),
                       ),
                       DataColumn(
-                        label: Text(
-                          'Profit',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        label: Text('Profit',
+                            style: TextStyle(color: Colors.white)),
                       ),
                     ],
                     rows: snapshot.data!.asMap().entries.map((entry) {
@@ -226,9 +253,14 @@ class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
                       TruckReport report = entry.value;
 
                       return DataRow(
-                        color: MaterialStateProperty.all(index.isEven ? Colors.grey[100] : Colors.grey[300]), // Alternating row colors
+                        color: MaterialStateProperty.all(
+                            index.isEven ? Colors.grey[100] : Colors.grey[300]),
                         cells: [
-                          DataCell(Text(report.truckNo)),
+                          DataCell(Text(
+                            report.truckNo,
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w600),
+                          )),
                           DataCell(Text("₹${formatCurrency(report.revenue)}")),
                           DataCell(Text("₹${formatCurrency(report.expenses)}")),
                           DataCell(Text("₹${formatCurrency(report.profit)}")),
@@ -246,10 +278,6 @@ class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
   }
 }
 
-
-
-
-
 class SummaryCard extends StatelessWidget {
   final String title;
   final String value;
@@ -265,7 +293,11 @@ class SummaryCard extends StatelessWidget {
         child: Column(
           children: [
             Text(title, style: TextStyle(color: Colors.white, fontSize: 14)),
-            Text(value, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(value,
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -279,5 +311,10 @@ class TruckReport {
   final int expenses;
   final int profit;
 
-  TruckReport({required this.truckNo, required this.revenue, required this.expenses, required this.profit});
+  TruckReport({
+    required this.truckNo,
+    required this.revenue,
+    required this.expenses,
+    required this.profit,
+  });
 }
