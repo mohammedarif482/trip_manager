@@ -35,16 +35,13 @@ class _ProfitDetailState extends State<ProfitDetail> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-
                   _buildAmountRow(
                       'Freight Amount', widget.tripData['amount'], true),
                   const SizedBox(height: 4),
                   const SizedBox(height: 8),
                   _buildActionLink('Expenses', () => _showAddChargesDialog()),
                   _buildExpenses(),
-                       _buildExpenses(),
                   const SizedBox(height: 8),
-                  const Divider(height: 32),
                 ],
               ),
             ),
@@ -87,7 +84,18 @@ class _ProfitDetailState extends State<ProfitDetail> {
         double pendingBalance = amount - totalExpense;
 
         if (expenses.isEmpty) {
-          return _buildAmountRow('Expenses', '₹0', false);
+          return Column(
+            children: [
+              _buildAmountRow('Expenses', '₹0', false),
+              const Divider(height: 32),
+              // _buildAmountRow('Pending Balance', '₹$pendingBalance', false),
+              _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
+              _buildAmountRow('Commision', '- ₹${amount * 0.04}', false),
+              const Divider(height: 32),
+              _buildAmountRow('Profit',
+                  '${amount - (totalExpense + amount * 0.04)}', false),
+            ],
+          );
         }
 
         return Column(
@@ -99,9 +107,14 @@ class _ProfitDetailState extends State<ProfitDetail> {
                 false,
               );
             }).toList(),
-            _buildAmountRow('Total Expense', '₹$totalExpense', false),
+
             const Divider(height: 32),
-            _buildAmountRow('Pending Balance', '₹$pendingBalance', false),
+            // _buildAmountRow('Pending Balance', '₹$pendingBalance', false),
+            _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
+            _buildAmountRow('Commision', '- ₹${amount * 0.04}', false),
+            const Divider(height: 32),
+            _buildAmountRow(
+                'Profit', '${amount - (totalExpense + amount * 0.04)}', false),
           ],
         );
       },
