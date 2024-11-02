@@ -30,7 +30,7 @@ class ReportsScreen extends StatelessWidget {
                   mainAxisSpacing: 10,
                 ),
                 children: [
-                  ReportTilteCard(
+                  ReportTitleCard(
                     title: "Truck Revenue",
                     icon: Icons.library_books_rounded,
                     onTap: () {
@@ -42,15 +42,15 @@ class ReportsScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  ReportTilteCard(
+                  ReportTitleCard(
                       title: "Party Revenue", icon: Icons.report, onTap: () {}),
-                  ReportTilteCard(
+                  ReportTitleCard(
                       title: "Party Balance", icon: Icons.report, onTap: () {}),
-                  ReportTilteCard(
+                  ReportTitleCard(
                       title: "Supplier Balance",
                       icon: Icons.report,
                       onTap: () {}),
-                  ReportTilteCard(
+                  ReportTitleCard(
                       title: "Transaction Report",
                       icon: Icons.report,
                       onTap: () {}),
@@ -64,17 +64,17 @@ class ReportsScreen extends StatelessWidget {
   }
 }
 
-class ReportTilteCard extends StatelessWidget {
-  const ReportTilteCard({
+class ReportTitleCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const ReportTitleCard({
     super.key,
     required this.title,
     required this.icon,
     required this.onTap,
   });
-
-  final String title;
-  final IconData icon;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +121,6 @@ class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
     return formatter.format(amount);
   }
 
-  // Helper method to safely convert dynamic to int
   int safeParseInt(dynamic value) {
     if (value == null) return 0;
     if (value is int) return value;
@@ -153,12 +152,9 @@ class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
           Map<String, dynamic> tripData =
               tripDoc.data() as Map<String, dynamic>;
 
-          // Safely parse trip amount
           totalRevenue += safeParseInt(tripData['amount']);
 
-          // Safely handle expenses
-          if (tripData.containsKey('expenses') &&
-              tripData['expenses'] is List) {
+          if (tripData.containsKey('expenses') && tripData['expenses'] is List) {
             List expenses = tripData['expenses'];
             for (var expense in expenses) {
               if (expense is Map) {
@@ -228,46 +224,56 @@ class _TruckRevenueReportScreenState extends State<TruckRevenueReportScreen> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.vertical,
                   child: DataTable(
-                    horizontalMargin: 6,
-                    headingRowColor: MaterialStateProperty.all(Colors.red),
-                    columns: [
-                      DataColumn(
-                        label: Text('Truck No',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                      DataColumn(
-                        label: Text('Revenue',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                      DataColumn(
-                        label: Text('Expenses',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                      DataColumn(
-                        label: Text('Profit',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                    ],
-                    rows: snapshot.data!.asMap().entries.map((entry) {
-                      int index = entry.key;
-                      TruckReport report = entry.value;
+  horizontalMargin: 10,
+  columnSpacing: 12, // Reduce spacing between columns
+  headingRowColor: MaterialStateProperty.all(Colors.red),
+  columns: [
+    DataColumn(
+      label: Text('Truck No',
+          style: TextStyle(color: Colors.white)),
+    ),
+    DataColumn(
+      label: Text('Revenue',
+          style: TextStyle(color: Colors.white)),
+    ),
+    DataColumn(
+      label: Text('Expenses',
+          style: TextStyle(color: Colors.white)),
+    ),
+    DataColumn(
+      label: Padding(
+        padding: const EdgeInsets.only(right: 10.0), // Shift Profit label left
+        child: Text('Profit',
+            style: TextStyle(color: Colors.white)),
+      ),
+    ),
+  ],
+  rows: snapshot.data!.asMap().entries.map((entry) {
+    int index = entry.key;
+    TruckReport report = entry.value;
 
-                      return DataRow(
-                        color: MaterialStateProperty.all(
-                            index.isEven ? Colors.grey[100] : Colors.grey[300]),
-                        cells: [
-                          DataCell(Text(
-                            report.truckNo,
-                            style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600),
-                          )),
-                          DataCell(Text("₹${formatCurrency(report.revenue)}")),
-                          DataCell(Text("₹${formatCurrency(report.expenses)}")),
-                          DataCell(Text("₹${formatCurrency(report.profit)}")),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+    return DataRow(
+      color: MaterialStateProperty.all(
+          index.isEven ? Colors.grey[100] : Colors.grey[300]),
+      cells: [
+        DataCell(Text(
+          report.truckNo,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600),
+        )),
+        DataCell(Text("₹${formatCurrency(report.revenue)}")),
+        DataCell(Text("₹${formatCurrency(report.expenses)}")),
+        DataCell(
+          Padding(
+            padding: const EdgeInsets.only(right: 10.0), // Shift Profit cell content left
+            child: Text("₹${formatCurrency(report.profit)}"),
+          ),
+        ),
+      ],
+    );
+  }).toList(),
+)
+,
                 ),
               ),
             ],
