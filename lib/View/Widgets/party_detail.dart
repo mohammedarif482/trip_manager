@@ -6,6 +6,7 @@ import 'package:tripmanager/Utils/constants.dart';
 class PartyDetail extends StatefulWidget {
   final Map<String, dynamic> tripData;
   final String tripId;
+  
 
   const PartyDetail({Key? key, required this.tripData, required this.tripId})
       : super(key: key);
@@ -19,12 +20,48 @@ final TextEditingController advanceController = TextEditingController();
 String advanceAmount = "0"; // Variable to hold the advance amount
 
 class _PartyDetailState extends State<PartyDetail> {
+  bool _hasAdvance = false;
+  String advanceAmount = '0';
+  String paymentAmount = '0';
+  List<String> paymentAmounts = []; // Initialize an empty list for payment amounts
+  List<String> paymentList = [];
+
+
   @override
   void initState() {
     super.initState();
     // Fetch the advance amount when the widget is initialized
     _fetchAdvanceAmount();
+    _fetchPaymentAmount();
+    _fetchPayments();
   }
+  Future<void> _fetchPayments() async {
+  try {
+    DocumentSnapshot tripDoc = await FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .get();
+
+    if (tripDoc.exists && tripDoc.data() != null) {
+      var data = tripDoc.data() as Map<String, dynamic>;
+      List<dynamic> payments = data['payments'] ?? [];
+      setState(() {
+        paymentAmounts = payments.map((payment) => payment['amount'].toString()).toList();
+      });
+    } else {
+      setState(() {
+        paymentAmounts = []; // Reset payment list if no data
+      });
+    }
+  } catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error fetching payments: $error')),
+    );
+  }
+}
+
+
+
 
   Future<void> _fetchAdvanceAmount() async {
   try {
@@ -226,61 +263,79 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   Widget _buildFinancialDetails() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildAmountRow('Freight Amount', widget.tripData['amount'], true),
-            const SizedBox(height: 4),
-            // Display the Advance Amount here
-            _buildAdvanceDisplay(),
-            const SizedBox(height: 8),
-            const Divider(height: 32),
-            const SizedBox(height: 16),
-            _buildAdvanceSection(), // Advance Section to add amount
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: _showAddChargesDialog,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Note'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primaryColor,
-                  ),
+  return Container(
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          _buildAmountRow('Freight Amount', widget.tripData['amount'], true),
+          const SizedBox(height: 4),
+          _buildAdvanceDisplay(), // Now includes payment amount
+          const SizedBox(height: 8),
+          const Divider(height: 32),
+          const SizedBox(height: 16),
+          _buildAdvanceSection(), // Advance Section to add amount
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _showAddChargesDialog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Note'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primaryColor,
                 ),
-                const Spacer(),
-                OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.primaryColor),
-                  ),
-                  child: const Text('Request Money'),
+              ),
+              const Spacer(),
+              OutlinedButton(
+                onPressed: () {},
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primaryColor),
                 ),
-              ],
-            ),
-          ],
-        ),
+                child: const Text('Request Money'),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
  Widget _buildAdvanceDisplay() {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
-        'Advance',
-        style: TextStyle(fontWeight: FontWeight.bold),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Advance',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Text(
+            advanceAmount,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
-      Text(
-        advanceAmount,
-        style: TextStyle(fontWeight: FontWeight.bold),
+      const SizedBox(height: 8),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: paymentAmounts.map((payment) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Payment', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(payment, style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          );
+        }).toList(),
       ),
     ],
   );
@@ -288,22 +343,53 @@ class _PartyDetailState extends State<PartyDetail> {
 
 
 
+Widget _buildPaymentList() {
+  return ListView.builder(
+    itemCount: paymentList.length,
+    itemBuilder: (context, index) {
+      return ListTile(
+        title: Text('Payment: ${paymentList[index]}'),
+      );
+    },
+  );
+}
 
-  Widget _buildAdvanceSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Add Advance',
-          style: TextStyle(fontWeight: FontWeight.bold),
+
+
+
+ Widget _buildAdvanceSection() {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(
+        advanceAmount == '0' || advanceAmount.isEmpty ? 'Add Advance' : 'Add Payment',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: AppColors.primaryColor,
         ),
-        IconButton(
-          icon: const Icon(Icons.add, color: Colors.red),
-          onPressed: () => _showAdvanceDialog(),
+      ),
+      TextButton(
+        onPressed: () {
+          if (advanceAmount == '0' || advanceAmount.isEmpty) {
+            _showAdvanceDialog(); // Show dialog to add advance
+          } else {
+            _showAdvanceDialog(); // Show dialog to add payment
+          }
+        },
+        child: const Text(
+          '+',
+          style: TextStyle(
+            color: AppColors.primaryColor,
+            fontSize: 20,
+          ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
+
+
 
   Widget _buildAddLoadButton() {
     return InkWell(
@@ -351,66 +437,139 @@ class _PartyDetailState extends State<PartyDetail> {
       ),
     );
   }
+  Future<void> _fetchPaymentAmount() async {
+  try {
+    DocumentSnapshot tripDoc = await FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .get();
 
-  void _showAdvanceDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add Advance Amount'),
-          content: TextField(
-            controller: advanceController,
-            decoration: const InputDecoration(labelText: 'Enter Advance Amount'),
-            keyboardType: TextInputType.number,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: _addAdvanceToFirestore,
-              child: const Text('Add Advance'),
-            ),
-          ],
-        );
-      },
+    if (tripDoc.exists && tripDoc.data() != null) {
+      var data = tripDoc.data() as Map<String, dynamic>;
+      setState(() {
+        advanceAmount = data['advanceAmount']?.toString() ?? '0'; // Fetch advance amount
+        paymentAmounts = List<String>.from(data['payments']?.map((payment) => payment['amount']) ?? []); // Fetch payment amounts
+        _hasAdvance = true; 
+      });
+    } else {
+      setState(() {
+        advanceAmount = '0';
+        paymentAmounts = []; // Reset payment list if no data
+        _hasAdvance = false;
+      });
+    }
+  } catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error fetching payment amount: $error')),
     );
   }
+}
+
+
+
+  void _showAdvanceDialog() {
+  bool isAddingAdvance = advanceAmount == '0' || advanceAmount.isEmpty;
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
+        content: TextField(
+          controller: advanceController,
+          decoration: const InputDecoration(labelText: 'Enter Amount'),
+          keyboardType: TextInputType.number,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (isAddingAdvance) {
+                // Add advance if there is no existing advance amount
+                _addAdvanceToFirestore();
+              } else {
+                // Otherwise, add payment
+                _addPaymentToFirestore();
+              }
+            },
+            child: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
 
   void _addAdvanceToFirestore() async {
   final String amount = advanceController.text;
   if (amount.isNotEmpty) {
-    // Store the advance amount in Firestore
     try {
       await FirebaseFirestore.instance
-          .collection('trips') // Ensure this matches your Firestore structure
-          .doc(widget.tripId) // The ID of the trip document you want to update
-          .update({'advanceAmount': amount}); // Update the advance amount
+          .collection('trips')
+          .doc(widget.tripId)
+          .update({'advanceAmount': amount}); // Update only advanceAmount
 
-      // Optional: Notify the user on successful addition
+      setState(() {
+        _hasAdvance = true; // Update state to indicate an advance exists
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Advance amount added successfully')),
       );
 
-      // Fetch the updated advance amount to update the UI
-      await _fetchAdvanceAmount();
-
+      await _fetchPaymentAmount(); // Refresh UI
+      advanceController.clear();
+      Navigator.of(context).pop();
     } catch (error) {
-      // Handle the error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add advance: $error')),
       );
     }
-
-    advanceController.clear(); // Clear the input field
-    Navigator.of(context).pop(); // Close the dialog
   } else {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: const Text('Please enter a valid amount')),
     );
   }
 }
+
+
+  void _addPaymentToFirestore() async {
+  final String amount = advanceController.text;
+  if (amount.isNotEmpty) {
+    try {
+      Map<String, dynamic> newPayment = {'amount': amount};
+
+      await FirebaseFirestore.instance
+          .collection('trips')
+          .doc(widget.tripId)
+          .update({
+        'payments': FieldValue.arrayUnion([newPayment]), // Update only payments array
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Payment amount added successfully')),
+      );
+
+      advanceController.clear();
+      await _fetchPaymentAmount(); // Refresh UI
+      Navigator.of(context).pop();
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add payment: $error')),
+      );
+    }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('Please enter a valid amount')),
+    );
+  }
+}
+
 
 
 
