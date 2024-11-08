@@ -202,7 +202,7 @@ class _TripsScreenState extends State<TripsScreen> {
       "date":
           "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
       "status": "Trip Started",
-      "amount": "₹ ${amountController.text}",
+      "amount": "${amountController.text}",
       "createdAt": FieldValue.serverTimestamp(),
     };
 

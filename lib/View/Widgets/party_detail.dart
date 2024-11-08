@@ -25,6 +25,7 @@ class _PartyDetailState extends State<PartyDetail> {
   String paymentAmount = '0';
   List<String> paymentAmounts = []; // Initialize an empty list for payment amounts
   List<String> paymentList = [];
+  String pendingBalance = '0';
 
 
   @override
@@ -34,6 +35,7 @@ class _PartyDetailState extends State<PartyDetail> {
     _fetchAdvanceAmount();
     _fetchPaymentAmount();
     _fetchPayments();
+    
   }
   Future<void> _fetchPayments() async {
   try {
@@ -272,14 +274,34 @@ class _PartyDetailState extends State<PartyDetail> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          _buildAmountRow('Freight Amount', widget.tripData['amount'], true),
+          _buildAmountRow('Freight Amount', '₹ ${widget.tripData['amount']}', true),
           const SizedBox(height: 4),
-          _buildAdvanceDisplay(), // Now includes payment amount
+          _buildAmountRow('Advance', '₹ $advanceAmount', true),
           const SizedBox(height: 8),
           const Divider(height: 32),
           const SizedBox(height: 16),
-          _buildAdvanceSection(), // Advance Section to add amount
+
+          _buildAdvanceSection(),
+
+          // Display Payments List directly under Advance section
+          _buildPaymentsList(),
+
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Pending Balance',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+              Text(
+                '₹ $pendingBalance',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
           Row(
             children: [
               TextButton.icon(
@@ -305,6 +327,56 @@ class _PartyDetailState extends State<PartyDetail> {
     ),
   );
 }
+
+Widget _buildPaymentsList() {
+  return StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const CircularProgressIndicator();
+      }
+
+      if (!snapshot.hasData || snapshot.data!.data() == null) {
+        return const Text('No payments available.');
+      }
+
+      final tripData = snapshot.data!.data() as Map<String, dynamic>;
+      final payments = tripData['payments'] ?? [];
+
+      if (payments.isEmpty) {
+        return const SizedBox(); // No payments to display
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          const Text(
+            'Payments',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ...payments.map<Widget>((payment) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Payment:'),
+                Text(
+                  '₹ ${payment['amount']}',
+                  style: const TextStyle(color: Colors.green),
+                ),
+              ],
+            );
+          }).toList(),
+        ],
+      );
+    },
+  );
+}
+
 
 
  Widget _buildAdvanceDisplay() {
@@ -437,7 +509,7 @@ Widget _buildPaymentList() {
       ),
     );
   }
-  Future<void> _fetchPaymentAmount() async {
+ Future<void> _fetchPaymentAmount() async {
   try {
     DocumentSnapshot tripDoc = await FirebaseFirestore.instance
         .collection('trips')
@@ -447,16 +519,20 @@ Widget _buildPaymentList() {
     if (tripDoc.exists && tripDoc.data() != null) {
       var data = tripDoc.data() as Map<String, dynamic>;
       setState(() {
-        advanceAmount = data['advanceAmount']?.toString() ?? '0'; // Fetch advance amount
-        paymentAmounts = List<String>.from(data['payments']?.map((payment) => payment['amount']) ?? []); // Fetch payment amounts
-        _hasAdvance = true; 
+        advanceAmount = data['advanceAmount']?.toString() ?? '0';
+        paymentAmounts = data['payments'] != null
+            ? List<String>.from(data['payments'].map((payment) => payment['amount']?.toString() ?? '0'))
+            : [];
+        _hasAdvance = true;
       });
+      _calculatePendingBalance(); // Calculate pending balance after fetching
     } else {
       setState(() {
         advanceAmount = '0';
-        paymentAmounts = []; // Reset payment list if no data
+        paymentAmounts = [];
         _hasAdvance = false;
       });
+      _calculatePendingBalance(); // Ensure balance is recalculated
     }
   } catch (error) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -464,6 +540,34 @@ Widget _buildPaymentList() {
     );
   }
 }
+
+
+
+
+  void _calculatePendingBalance() {
+  // Fetch the freight amount from the 'amount' field in the trip data
+  final int freightAmount = int.tryParse(widget.tripData['amount']?.toString() ?? '0') ?? 0;
+  final int advanceAmountInt = int.tryParse(advanceAmount) ?? 0;
+
+  // Sum up all payments from the payments array
+  final int totalPayments = paymentAmounts.fold<int>(
+    0,
+    (sum, payment) => sum + (int.tryParse(payment) ?? 0),
+  );
+
+  // Set pending balance to freightAmount if no payments or advance are present
+  int calculatedPendingBalance;
+  if (advanceAmountInt == 0 && totalPayments == 0) {
+    calculatedPendingBalance = freightAmount;
+  } else {
+    calculatedPendingBalance = freightAmount - (advanceAmountInt + totalPayments);
+  }
+
+  setState(() {
+    pendingBalance = calculatedPendingBalance.toString();
+  });
+}
+  
 
 
 
@@ -552,12 +656,19 @@ Widget _buildPaymentList() {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Payment amount added successfully')),
+        const SnackBar(content: Text('Payment amount added successfully')),
       );
 
       advanceController.clear();
-      await _fetchPaymentAmount(); // Refresh UI
-      Navigator.of(context).pop();
+
+      // Refresh payment list and pending balance
+      await _fetchPaymentAmount();
+      
+      setState(() {
+        // Trigger UI update for the payment list and pending balance
+      });
+
+      Navigator.of(context).pop(); // Close the dialog if necessary
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add payment: $error')),
@@ -565,7 +676,7 @@ Widget _buildPaymentList() {
     }
   } else {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Text('Please enter a valid amount')),
+      const SnackBar(content: Text('Please enter a valid amount')),
     );
   }
 }
