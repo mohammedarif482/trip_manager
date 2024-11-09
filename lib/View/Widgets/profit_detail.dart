@@ -53,73 +53,73 @@ class _ProfitDetailState extends State<ProfitDetail> {
   }
 
   Widget _buildExpenses() {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('trips')
-          .doc(widget.tripId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
+  return StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const CircularProgressIndicator();
+      }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          // No document found or doesn't exist
-          return _buildAmountRow('Expenses', '₹0', false);
-        }
+      if (!snapshot.hasData || !snapshot.data!.exists) {
+        // No document found or doesn't exist
+        return _buildAmountRow('Expenses', '₹0', false);
+      }
 
-        // Document exists
-        var tripData = snapshot.data!.data() as Map<String, dynamic>;
-        List expenses =
-            tripData.containsKey('expenses') ? tripData['expenses'] : [];
-        // Calculate total expenses
+      // Document exists
+      var tripData = snapshot.data!.data() as Map<String, dynamic>;
+      List expenses = tripData.containsKey('expenses') ? tripData['expenses'] : [];
 
-        String cleanedString =
-            tripData['amount'].replaceAll(RegExp(r'[^0-9]'), '');
-        double amount = double.parse(cleanedString);
-        double totalExpense = expenses.fold(
-            0.0, (sum, expense) => sum + (expense['amount'] ?? 0.0));
+      // Calculate freight amount
+      String cleanedString = tripData['amount'].replaceAll(RegExp(r'[^0-9]'), '');
+      double amount = double.parse(cleanedString);
+      double totalExpense = expenses.fold(
+          0.0, (sum, expense) => sum + (expense['amount'] ?? 0.0));
 
-        // Calculate pending balance
-        double pendingBalance = amount - totalExpense;
+      // Calculate commission and Bhata
+      double commission = amount * 0.04;
+      double bhata = amount * 0.20;
 
-        if (expenses.isEmpty) {
-          return Column(
-            children: [
-              _buildAmountRow('Expenses', '₹0', false),
-              const Divider(height: 32),
-              // _buildAmountRow('Pending Balance', '₹$pendingBalance', false),
-              _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
-              _buildAmountRow('Commision', '- ₹${amount * 0.04}', false),
-              const Divider(height: 32),
-              _buildAmountRow('Profit',
-                  '${amount - (totalExpense + amount * 0.04)}', false),
-            ],
-          );
-        }
+      // Calculate profit
+      double profit = amount - (totalExpense + commission + bhata);
 
+      if (expenses.isEmpty) {
         return Column(
           children: [
-            ...expenses.map((expense) {
-              return _buildAmountRow(
-                expense['expense'],
-                '₹${expense['amount']}',
-                false,
-              );
-            }).toList(),
-
+            _buildAmountRow('Expenses', '₹0', false),
             const Divider(height: 32),
-            // _buildAmountRow('Pending Balance', '₹$pendingBalance', false),
             _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
-            _buildAmountRow('Commision', '- ₹${amount * 0.04}', false),
+            _buildAmountRow('Commission', '- ₹$commission', false),
+            _buildAmountRow('Bhata', '- ₹$bhata', false),
             const Divider(height: 32),
-            _buildAmountRow(
-                'Profit', '${amount - (totalExpense + amount * 0.04)}', false),
+            _buildAmountRow('Profit', '₹$profit', false),
           ],
         );
-      },
-    );
-  }
+      }
+
+      return Column(
+        children: [
+          ...expenses.map((expense) {
+            return _buildAmountRow(
+              expense['expense'],
+              '₹${expense['amount']}',
+              false,
+            );
+          }).toList(),
+          const Divider(height: 32),
+          _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
+          _buildAmountRow('Commission', '- ₹$commission', false),
+          _buildAmountRow('Bhata', '- ₹$bhata', false),
+          const Divider(height: 32),
+          _buildAmountRow('Profit', '₹$profit', false),
+        ],
+      );
+    },
+  );
+}
+
 
   Widget _buildActionLink(String text, VoidCallback onTap) {
     return GestureDetector(
