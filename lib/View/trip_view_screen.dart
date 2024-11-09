@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:easy_stepper/easy_stepper.dart';
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tripmanager/View/Widgets/party_detail.dart';
 import 'package:tripmanager/View/Widgets/profit_detail.dart';
+import 'package:tripmanager/View/Widgets/DriverDetail.dart'; // Import the new widget
 
 class TripDetailScreen extends StatefulWidget {
   final String tripId;
@@ -78,9 +78,10 @@ class _TripDetailScreenState extends State<TripDetailScreen>
                   tripId: widget.tripId,
                 ),
               ),
-              Container(
-                child: Center(
-                  child: Text("Driver"),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: DriverDetail(
+                  tripData: tripData,
                 ),
               ),
               Container(
