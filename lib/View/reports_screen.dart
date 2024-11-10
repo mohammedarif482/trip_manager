@@ -295,7 +295,7 @@ class SummaryCard extends StatelessWidget {
     return Card(
       color: AppColors.primaryColor,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(10.0),
         child: Column(
           children: [
             Text(title, style: TextStyle(color: Colors.white, fontSize: 14)),
