@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Firebase import
@@ -32,14 +33,34 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthCheck extends StatelessWidget {
+  static bool isDriver = false;
+
+  Future<void> checkIfDriver(User? user) async {
+    if (user != null) {
+      // Access Firestore to get the user document
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      // Check if the isDriver field exists and set it to the static variable
+      if (userDoc.exists && userDoc.data()?['isDriver'] == true) {
+        isDriver = true;
+      } else {
+        isDriver = false;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator();
+          return Center(child: CircularProgressIndicator());
         } else if (snapshot.hasData) {
+          // Check if the user is a driver
+          checkIfDriver(snapshot.data);
           return BottomNavBar();
         } else {
           return LoginScreen();

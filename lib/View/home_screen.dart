@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/reports_screen.dart';
 import 'package:tripmanager/View/vehicles_screen.dart';
+import 'package:tripmanager/main.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -16,23 +17,25 @@ class HomeScreen extends StatelessWidget {
             SizedBox(
               height: 16,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Total Party Balance',
-                style: TextStyle(fontSize: 26),
+            if (AuthCheck.isDriver == false)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Total Party Balance',
+                  style: TextStyle(fontSize: 26),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                '₹ 15000',
-                style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryColor),
+            if (AuthCheck.isDriver == false)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '₹ 15000',
+                  style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryColor),
+                ),
               ),
-            ),
             const SizedBox(
               height: 10,
             ),
