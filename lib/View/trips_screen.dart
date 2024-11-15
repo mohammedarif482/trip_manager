@@ -5,6 +5,7 @@ import 'package:tripmanager/Model/trip_model.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/Widgets/trip_card.dart';
 import 'package:tripmanager/View/trip_view_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TripsScreen extends StatefulWidget {
   @override
@@ -40,14 +41,43 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchTrips() async {
-    final QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('trips')
-        .where('status',
-            isNotEqualTo: 'Trip Completed') // Filter by 'Trip Completed'
+  try {
+    final String? userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      throw Exception("User not logged in");
+    }
+
+    // Fetch user details
+    final DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
         .get();
 
-    return snapshot.docs.map((doc) {
-      // Extract data from Firestore document
+    if (!userSnapshot.exists) {
+      throw Exception("User document not found");
+    }
+
+    final Map<String, dynamic>? userData =
+        userSnapshot.data() as Map<String, dynamic>?;
+
+    if (userData == null) {
+      throw Exception("User data is null");
+    }
+
+    final String userName = userData['name'] ?? '';
+    final bool isDriver = userData['isDriver'] ?? false;
+
+    Query query = FirebaseFirestore.instance.collection('trips');
+
+    // Filter trips based on driver or all
+    if (isDriver) {
+      query = query.where('driverName', isEqualTo: userName);
+    }
+
+    final QuerySnapshot snapshot = await query.get();
+
+    // Map the results into a list
+    final trips = snapshot.docs.map((doc) {
       return {
         "tripId": doc.id,
         "partyName": doc['partyName'],
@@ -60,30 +90,71 @@ class _TripsScreenState extends State<TripsScreen> {
         "amount": doc['amount'],
       };
     }).toList();
+
+    // If user is not a driver, filter out 'Trip Completed' locally
+    if (!isDriver) {
+      return trips.where((trip) => trip['status'] != 'Trip Completed').toList();
+    }
+
+    // Return all trips for the driver (filtered by driverName above)
+    return trips;
+  } catch (e) {
+    print("Error fetching trips: $e");
+    rethrow; // Optionally rethrow the error to handle it further up the chain
+  }
+}
+
+
+Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
+  // Get the current user ID
+  final String? userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId == null) {
+    throw Exception("User not logged in");
   }
 
-  Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
-    final QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('trips')
-        .where('status',
-            isEqualTo: 'Trip Completed') // Filter by 'Trip Completed'
-        .get();
+  // Fetch the user's information from the Firestore 'users' collection
+  final DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(userId)
+      .get();
 
-    return snapshot.docs.map((doc) {
-      // Extract data from Firestore document
-      return {
-        "tripId": doc.id,
-        "partyName": doc['partyName'],
-        "driverName": doc['driverName'],
-        "vehicleNumber": doc['vehicleNumber'],
-        "fromLocation": doc['fromLocation'],
-        "toLocation": doc['toLocation'],
-        "date": doc['date'],
-        "status": doc['status'],
-        "amount": doc['amount'],
-      };
-    }).toList();
+  final Map<String, dynamic>? userData =
+      userSnapshot.data() as Map<String, dynamic>?;
+
+  if (userData == null) {
+    throw Exception("User data not found");
   }
+
+  final String userName = userData['name'] ?? '';
+  final bool isDriver = userData['isDriver'] ?? false;
+
+  Query query = FirebaseFirestore.instance.collection('trips');
+
+  // If the user is a driver, filter trips by driverName
+  if (isDriver) {
+    query = query.where('driverName', isEqualTo: userName);
+  }
+
+  // Only include completed trips
+  query = query.where('status', isEqualTo: 'Trip Completed');
+
+  final QuerySnapshot snapshot = await query.get();
+
+  return snapshot.docs.map((doc) {
+    return {
+      "tripId": doc.id,
+      "partyName": doc['partyName'],
+      "driverName": doc['driverName'],
+      "vehicleNumber": doc['vehicleNumber'],
+      "fromLocation": doc['fromLocation'],
+      "toLocation": doc['toLocation'],
+      "date": doc['date'],
+      "status": doc['status'],
+      "amount": doc['amount'],
+    };
+  }).toList();
+}
+
 
   Future<void> _loadTrips() async {
     setState(() {
@@ -277,156 +348,182 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   void _showAddTripSheet() async {
-    // Clear previous values before showing the dialog
-    vehicleNumberController.clear();
-    fromLocationController.clear();
-    toLocationController.clear();
-    amountController.clear();
-    partyController.clear();
-    selected_Driver = null;
-    selectedDate = DateTime.now(); // Reset to the current date if needed
+  // Clear previous values before showing the dialog
+  vehicleNumberController.clear();
+  fromLocationController.clear();
+  toLocationController.clear();
+  amountController.clear();
+  partyController.clear();
+  selected_Driver = null;
+  selectedDate = DateTime.now(); // Reset to the current date if needed
 
-    // Fetch the list of vehicle numbers from Firestore
-    List<String> vehicleNumbers = [];
+  // Fetch the list of vehicle numbers from Firestore
+  List<String> vehicleNumbers = [];
+  bool isDriver = false; // To store if the current user is a driver
 
-    try {
-      QuerySnapshot snapshot =
-          await FirebaseFirestore.instance.collection('vehicles').get();
-      vehicleNumbers =
-          snapshot.docs.map((doc) => doc['registration'].toString()).toList();
-    } catch (e) {
-      print("Error fetching vehicles: $e");
+  try {
+    // Fetch the current user's data
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (userId.isNotEmpty) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        isDriver = userDoc['isDriver'] ?? false;
+      }
     }
 
-    showModalBottomSheet(
-      isScrollControlled: true,
-      context: context,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Add New Trip",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: partyController,
-                  decoration: InputDecoration(
-                    labelText: 'Party Name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                // DropdownButton for selecting driver
-                DropdownButtonFormField<String>(
-                  value: selected_Driver, // Keep track of the selected driver
-                  hint: Text('Select Driver'),
-                  items: drivers.map((driver) {
-                    return DropdownMenuItem<String>(
-                      value: driver['name'], // The driver name
-                      child: Text(driver['name']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selected_Driver = value; // Update the selected driver
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Driver Name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                // DropdownButton for selecting vehicle number from Firestore
-                DropdownButtonFormField<String>(
-                  value:
-                      selectedVehicleNumber, // Keep track of the selected vehicle number
-                  hint: Text('Select Vehicle Number'),
-                  items: vehicleNumbers.map((number) {
-                    return DropdownMenuItem<String>(
-                      value: number, // The vehicle registration number
-                      child: Text(number),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedVehicleNumber =
-                          value; // Update the selected vehicle number
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Vehicle Number',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: fromLocationController,
-                  decoration: InputDecoration(
-                    labelText: 'From Location',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: toLocationController,
-                  decoration: InputDecoration(
-                    labelText: 'To Location',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                ListTile(
-                  title: Text("Select Date"),
-                  subtitle: Text(
-                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                  ),
-                  trailing: Icon(Icons.calendar_today),
-                  onTap: () => _selectDate(context),
-                ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text("Cancel"),
-                    ),
-                    SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: _addNewTrip,
-                      child: Text("Add Trip"),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    // Fetch vehicle numbers
+    QuerySnapshot snapshot =
+        await FirebaseFirestore.instance.collection('vehicles').get();
+    vehicleNumbers =
+        snapshot.docs.map((doc) => doc['registration'].toString()).toList();
+  } catch (e) {
+    print("Error fetching data: $e");
   }
+
+  // Show the bottom sheet
+  showModalBottomSheet(
+    isScrollControlled: true,
+    context: context,
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 16,
+          right: 16,
+          top: 16,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Add New Trip",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: partyController,
+                decoration: InputDecoration(
+                  labelText: 'Party Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              // DropdownButton for selecting driver
+              DropdownButtonFormField<String>(
+                value: selected_Driver, // Keep track of the selected driver
+                hint: Text('Select Driver'),
+                items: drivers.map((driver) {
+                  return DropdownMenuItem<String>(
+                    value: driver['name'], // The driver name
+                    child: Text(driver['name']),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selected_Driver = value; // Update the selected driver
+                  });
+                },
+                decoration: InputDecoration(
+                  labelText: 'Driver Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              // DropdownButton for selecting vehicle number from Firestore
+              DropdownButtonFormField<String>(
+                value:
+                    selectedVehicleNumber, // Keep track of the selected vehicle number
+                hint: Text('Select Vehicle Number'),
+                items: vehicleNumbers.map((number) {
+                  return DropdownMenuItem<String>(
+                    value: number, // The vehicle registration number
+                    child: Text(number),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedVehicleNumber =
+                        value; // Update the selected vehicle number
+                  });
+                },
+                decoration: InputDecoration(
+                  labelText: 'Vehicle Number',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: fromLocationController,
+                decoration: InputDecoration(
+                  labelText: 'From Location',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: toLocationController,
+                decoration: InputDecoration(
+                  labelText: 'To Location',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Amount',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                title: Text("Select Date"),
+                subtitle: Text(
+                  "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                ),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () => _selectDate(context),
+              ),
+              SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("Cancel"),
+                  ),
+                  SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: isDriver
+                        ? null // Disable button for drivers
+                        : _addNewTrip, // Enable only for non-drivers
+                    child: Text("Add Trip"),
+                  ),
+                ],
+              ),
+              if (isDriver) // Optional: Show a message if the user is a driver
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Text(
+                    "Drivers are not allowed to add trips.",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              SizedBox(height: 16),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
 
   void _searchTrips(String query) {
     final results = _convertTripsToMap(DummyData.trips).where((trip) {

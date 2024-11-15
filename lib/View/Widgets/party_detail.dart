@@ -35,6 +35,7 @@ class _PartyDetailState extends State<PartyDetail> {
     _fetchAdvanceAmount();
     _fetchPaymentAmount();
     _fetchPayments();
+    _fetchTripStatus();
     
   }
   Future<void> _fetchPayments() async {
@@ -230,39 +231,88 @@ class _PartyDetailState extends State<PartyDetail> {
     ];
   }
 
+  bool _isTripCompleted = false;
+
   Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.secondaryColor),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            child: const Text(
-              'Complete Trip',
-              style: TextStyle(color: AppColors.secondaryColor),
-            ),
+  return Row(
+    children: [
+      Expanded(
+        child: OutlinedButton(
+          onPressed: _isTripCompleted ? null : _completeTrip,  // Disable if trip is completed
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.secondaryColor),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          child: Text(
+            _isTripCompleted ? 'Completed' : 'Complete Trip',  // Change text based on trip status
+            style: TextStyle(color: AppColors.secondaryColor),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryColor,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            child: const Text(
-              'View Bill',
-              style: TextStyle(color: Colors.white),
-            ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () {},
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryColor,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          child: const Text(
+            'View Bill',
+            style: TextStyle(color: Colors.white),
           ),
         ),
-      ],
+      ),
+    ],
+  );
+}
+
+// Function to handle the trip completion
+Future<void> _completeTrip() async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .update({'status': 'Trip Completed'});  // Update status to "Trip Completed"
+
+    setState(() {
+      _isTripCompleted = true;  // Update state to reflect trip is completed
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Trip marked as completed')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error completing trip: $e')),
     );
   }
+}
+
+// Fetch trip status when building the widget to disable the button if completed
+void _fetchTripStatus() async {
+  try {
+    DocumentSnapshot tripDoc = await FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .get();
+
+    if (tripDoc.exists) {
+      var data = tripDoc.data() as Map<String, dynamic>;
+      setState(() {
+        _isTripCompleted = data['status'] == 'Trip Completed';  // Check if trip status is 'Trip Completed'
+      });
+    }
+  } catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error fetching trip status: $error')),
+    );
+  }
+}
+
+
+
+
 
   Widget _buildFinancialDetails() {
   return Container(
@@ -573,35 +623,57 @@ Widget _buildPaymentList() {
 
   void _showAdvanceDialog() {
   bool isAddingAdvance = advanceAmount == '0' || advanceAmount.isEmpty;
+  bool isReceivedByDriver = false; // Track switch state
 
   showDialog(
     context: context,
     builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
-        content: TextField(
-          controller: advanceController,
-          decoration: const InputDecoration(labelText: 'Enter Amount'),
-          keyboardType: TextInputType.number,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (isAddingAdvance) {
-                // Add advance if there is no existing advance amount
-                _addAdvanceToFirestore();
-              } else {
-                // Otherwise, add payment
-                _addPaymentToFirestore();
-              }
-            },
-            child: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
-          ),
-        ],
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setStateDialog) {
+          return AlertDialog(
+            title: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min, // Adjust size to fit the content
+              children: [
+                TextField(
+                  controller: advanceController,
+                  decoration: const InputDecoration(labelText: 'Enter Amount'),
+                  keyboardType: TextInputType.number,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Received by Driver'),
+                    Switch(
+                      value: isReceivedByDriver,
+                      onChanged: (bool newValue) {
+                        setStateDialog(() {
+                          isReceivedByDriver = newValue; // Update the switch state within the dialog
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (isAddingAdvance) {
+                    _addAdvanceToFirestore(isReceivedByDriver); // Pass the switch state
+                  } else {
+                    _addPaymentToFirestore(isReceivedByDriver); // Pass the switch state
+                  }
+                },
+                child: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
+              ),
+            ],
+          );
+        },
       );
     },
   );
@@ -609,50 +681,90 @@ Widget _buildPaymentList() {
 
 
 
-  void _addAdvanceToFirestore() async {
+
+
+  void _addAdvanceToFirestore(bool isReceivedByDriver) async {
   final String amount = advanceController.text;
   if (amount.isNotEmpty) {
     try {
+      // Update the trip with advance amount
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
           .update({'advanceAmount': amount}); // Update only advanceAmount
 
+      // If the switch is on, also update the driverTransactions collection
+      if (isReceivedByDriver) {
+        // Fetch the driver name from the trip document
+        final tripDoc = await FirebaseFirestore.instance
+            .collection('trips')
+            .doc(widget.tripId)
+            .get();
+
+        // Make sure the driver name exists in the document
+        final driverName = tripDoc.exists && tripDoc.data()?.containsKey('driverName') == true
+            ? tripDoc['driverName']
+            : 'Unknown Driver'; // Default value in case driverName is missing
+
+        final timestamp = FieldValue.serverTimestamp(); // Use server timestamp for consistency
+
+        // Add to driverTransactions collection
+        await FirebaseFirestore.instance.collection('drivertransactions').add({
+          'amount': amount,
+          'description': 'Trip advance',
+          'driverName': driverName, // Use the real driver name here
+          'timestamp': timestamp,
+          'type': 'got', // The transaction type is "got"
+        });
+      }
+
+      // Set state to indicate an advance exists
       setState(() {
         _hasAdvance = true; // Update state to indicate an advance exists
       });
 
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Advance amount added successfully')),
       );
 
-      await _fetchPaymentAmount(); // Refresh UI
+      // Refresh payment list and pending balance
+      await _fetchPaymentAmount();
+
       advanceController.clear();
       Navigator.of(context).pop();
     } catch (error) {
+      // Handle error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add advance: $error')),
       );
     }
   } else {
+    // Show message if the amount is empty
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Text('Please enter a valid amount')),
+      const SnackBar(content: Text('Please enter a valid amount')),
     );
   }
 }
 
 
-  void _addPaymentToFirestore() async {
+
+
+
+  void _addPaymentToFirestore(bool isReceivedByDriver) async {
   final String amount = advanceController.text;
   if (amount.isNotEmpty) {
     try {
-      Map<String, dynamic> newPayment = {'amount': amount};
+      Map<String, dynamic> newPayment = {
+        'amount': amount,
+        'receivedByDriver': isReceivedByDriver, // Include the flag for payment
+      };
 
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
           .update({
-        'payments': FieldValue.arrayUnion([newPayment]), // Update only payments array
+        'payments': FieldValue.arrayUnion([newPayment]), // Add to payments array
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -663,7 +775,7 @@ Widget _buildPaymentList() {
 
       // Refresh payment list and pending balance
       await _fetchPaymentAmount();
-      
+
       setState(() {
         // Trigger UI update for the payment list and pending balance
       });
@@ -680,6 +792,7 @@ Widget _buildPaymentList() {
     );
   }
 }
+
 
 
 
