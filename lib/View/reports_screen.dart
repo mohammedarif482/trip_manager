@@ -43,7 +43,19 @@ class ReportsScreen extends StatelessWidget {
                     },
                   ),
                   ReportTitleCard(
-                      title: "Party Revenue", icon: Icons.report, onTap: () {}),
+                    title: "Party Revenue",
+                    icon: Icons.account_balance_wallet_rounded, // Unique icon for Party Revenue
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PartyRevenueReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+
                   ReportTitleCard(
                       title: "Party Balance", icon: Icons.report, onTap: () {}),
                   ReportTitleCard(
@@ -100,6 +112,343 @@ class ReportTitleCard extends StatelessWidget {
     );
   }
 }
+
+
+
+class PartyRevenueReportScreen extends StatefulWidget {
+  const PartyRevenueReportScreen({super.key});
+
+  @override
+  _PartyRevenueReportScreenState createState() =>
+      _PartyRevenueReportScreenState();
+}
+
+class _PartyRevenueReportScreenState extends State<PartyRevenueReportScreen> {
+  String searchQuery = '';
+  String selectedFilter = 'All';
+  String selectedSort = 'Party Name';
+  bool isAscending = true;
+  List<Map<String, dynamic>> filteredData = [];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Party Revenue Report"),
+        leading: IconButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Search, Filter, and Sort Row
+            Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.03, vertical: 8),
+              child: Row(
+                children: [
+                  // Search Bar
+                  Expanded(
+                    child: TextField(
+                      onChanged: (value) {
+                        setState(() {
+                          searchQuery = value.toLowerCase();
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by Party Name...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  // Filter Dropdown
+                  Container(
+                    width: screenWidth * 0.25,
+                    child: DropdownButton<String>(
+                      value: selectedFilter,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedFilter = newValue ?? 'All';
+                        });
+                      },
+                      items: <String>['All', 'By Revenue', 'By Trips']
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  // Sort Dropdown
+                  Container(
+                    width: screenWidth * 0.25,
+                    child: DropdownButton<String>(
+                      value: selectedSort,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedSort = newValue ?? 'Party Name';
+                        });
+                      },
+                      items: <String>['Party Name', 'Revenue', 'Trips']
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  // Sort Order (Ascending/Descending)
+                  IconButton(
+                    icon: Icon(isAscending
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward),
+                    onPressed: () {
+                      setState(() {
+                        isAscending = !isAscending;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // FutureBuilder for data fetching
+            Container(
+              height: screenHeight * 0.7, // Limit height for table
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: fetchPartyRevenueData(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text("Error: ${snapshot.error}"));
+                  }
+                  final data = snapshot.data ?? [];
+                  final filteredData = applyFiltersAndSort(data);
+
+                  final int totalTrips = filteredData.fold(0,
+                      (sum, item) => sum + (item['trips'] as int));
+                  final int totalRevenue = filteredData.fold(0,
+                      (sum, item) => sum + (item['revenue'] as int));
+
+                  return Column(
+                    children: [
+                      // Table Header
+                      Container(
+                        color: Colors.red, // Red background for header
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                "Party/Customer Name",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white), // White font
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                "Trips",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                "Revenue",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Table content
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: filteredData.length,
+                          itemBuilder: (context, index) {
+                            final party = filteredData[index];
+                            return Container(
+                              color: index % 2 == 0
+                                  ? Colors.grey[100]
+                                  : Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 16),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text(party['partyName'] ?? 'N/A'),
+                                  ),
+                                  Expanded(
+                                    flex: 1,
+                                    child: Text(
+                                      party['trips'].toString(),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      "₹${party['revenue']}",
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      // Total Row at the bottom of the table
+                      Container(
+                        color: Colors.green, // Green background for total row
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                "Total",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white, // White text
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                totalTrips.toString(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white, // White text
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                "₹${totalRevenue}",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white, // White text
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Fetch combined data
+  Future<List<Map<String, dynamic>>> fetchPartyRevenueData() async {
+    final partyCollection = FirebaseFirestore.instance.collection('partyreport');
+    final tripsCollection = FirebaseFirestore.instance.collection('trips');
+
+    // Fetch party report data
+    final partySnapshot = await partyCollection.get();
+    final List<Map<String, dynamic>> partyData = partySnapshot.docs.map((doc) {
+      // Process the amount field
+      final rawAmount = doc['amount'] as String;
+      final cleanAmount = rawAmount.replaceAll(RegExp(r'[₹, ]'), '');
+      final revenue = int.tryParse(cleanAmount) ?? 0; // Convert to int, fallback to 0 if invalid
+
+      return {
+        'partyName': doc['partyName'],
+        'revenue': revenue,
+      };
+    }).toList();
+
+    // Fetch trips data and calculate counts
+    for (var party in partyData) {
+      final partyName = party['partyName'];
+      final tripsSnapshot =
+          await tripsCollection.where('partyName', isEqualTo: partyName).get();
+      party['trips'] = tripsSnapshot.size; // Count documents for this party
+    }
+
+    return partyData;
+  }
+
+  // Apply search, filter, and sort to the data
+  List<Map<String, dynamic>> applyFiltersAndSort(List<Map<String, dynamic>> data) {
+    // Apply search filter
+    var filteredData = data.where((party) {
+      return party['partyName']
+          .toString()
+          .toLowerCase()
+          .contains(searchQuery);
+    }).toList();
+
+    // Apply selected filter
+    if (selectedFilter == 'By Revenue') {
+      filteredData = filteredData
+          .where((party) => party['revenue'] > 0)
+          .toList();
+    } else if (selectedFilter == 'By Trips') {
+      filteredData = filteredData.where((party) => party['trips'] > 0).toList();
+    }
+
+    // Sort data based on selected sort option
+    if (selectedSort == 'Party Name') {
+      filteredData.sort((a, b) => a['partyName']
+          .toString()
+          .compareTo(b['partyName'].toString()));
+    } else if (selectedSort == 'Revenue') {
+      filteredData.sort((a, b) => a['revenue'].compareTo(b['revenue']));
+    } else if (selectedSort == 'Trips') {
+      filteredData.sort((a, b) => a['trips'].compareTo(b['trips']));
+    }
+
+    // Reverse order if descending
+    if (!isAscending) {
+      filteredData = filteredData.reversed.toList();
+    }
+
+    return filteredData;
+  }
+}
+
+
+
+
 
 class TruckRevenueReportScreen extends StatefulWidget {
   @override

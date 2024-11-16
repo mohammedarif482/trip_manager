@@ -282,30 +282,32 @@ Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
     await FirebaseFirestore.instance.collection('trips').add(newTrip);
 
     // Check if the party already exists in the partyreport collection
-    final partyReportQuery = await FirebaseFirestore.instance
-        .collection('partyreport')
-        .where('partyName', isEqualTo: partyController.text)
-        .get();
+    // Check if the party already exists in the partyreport collection
+final partyReportQuery = await FirebaseFirestore.instance
+    .collection('partyreport')
+    .where('partyName', isEqualTo: selectedPartyName)
+    .get();
 
-    if (partyReportQuery.docs.isNotEmpty) {
-      // If the party already exists, increment the amount
-      DocumentSnapshot existingParty = partyReportQuery.docs.first;
-      double currentAmount = double.parse(existingParty['amount'].replaceAll('₹ ', ''));
-      double newAmount = currentAmount + double.parse(amountController.text.replaceAll('₹ ', ''));
+if (partyReportQuery.docs.isNotEmpty) {
+  // If the party already exists, increment the amount
+  DocumentSnapshot existingParty = partyReportQuery.docs.first;
+  double currentAmount = double.parse(existingParty['amount'].replaceAll('₹ ', ''));
+  double newAmount = currentAmount + double.parse(amountController.text.replaceAll('₹ ', ''));
 
-      await FirebaseFirestore.instance
-          .collection('partyreport')
-          .doc(existingParty.id)
-          .update({
-        'amount': '₹ $newAmount',
-      });
-    } else {
-      // If the party doesn't exist, add a new entry
-      await FirebaseFirestore.instance.collection('partyreport').add({
-        'partyName': selectedPartyName.toString(),
-        'amount': '₹ ${amountController.text}',
-      });
-    }
+  await FirebaseFirestore.instance
+      .collection('partyreport')
+      .doc(existingParty.id)
+      .update({
+    'amount': '₹ $newAmount',
+  });
+} else {
+  // If the party doesn't exist, add a new entry with the initial amount
+  await FirebaseFirestore.instance.collection('partyreport').add({
+    'partyName': selectedPartyName.toString(),
+    'amount': '₹ ${amountController.text}',
+  });
+}
+
 
     // Clear all input fields and reset the selected values
     vehicleNumberController.clear();
