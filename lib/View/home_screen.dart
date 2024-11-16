@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/reports_screen.dart';
 import 'package:tripmanager/View/vehicles_screen.dart';
+import 'package:tripmanager/View/party_screen.dart'; // Import your PartyScreen here
 import 'package:tripmanager/main.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -107,25 +108,34 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(
               height: 10,
             ),
-            Container(
-              height: 50,
-              margin: EdgeInsets.all(10),
-              padding: EdgeInsets.all(10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(width: 1.0),
-                borderRadius: BorderRadius.all(Radius.circular(10.0)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Party",
-                    style: TextStyle(fontSize: 22),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PartyScreen(), // Navigate to PartyScreen
                   ),
-                  Icon(Icons.arrow_right)
-                ],
+                );
+              },
+              child: Container(
+                height: 50,
+                margin: EdgeInsets.all(10),
+                padding: EdgeInsets.all(10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(width: 1.0),
+                  borderRadius: BorderRadius.all(Radius.circular(10.0)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Party",
+                      style: TextStyle(fontSize: 22),
+                    ),
+                    Icon(Icons.arrow_right)
+                  ],
+                ),
               ),
             ),
             Container(
