@@ -70,9 +70,17 @@ class ReportsScreen extends StatelessWidget {
                   ),
 
                   ReportTitleCard(
-                      title: "Supplier Balance",
-                      icon: Icons.report,
-                      onTap: () {}),
+                    title: "Profit/Loss Report",
+                    icon: Icons.analytics,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProfitLossReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   ReportTitleCard(
                       title: "Transaction Report",
                       icon: Icons.report,
@@ -123,6 +131,172 @@ class ReportTitleCard extends StatelessWidget {
     );
   }
 }
+
+
+
+
+class ProfitLossReportScreen extends StatefulWidget {
+  const ProfitLossReportScreen({super.key});
+
+  @override
+  State<ProfitLossReportScreen> createState() => _ProfitLossReportScreenState();
+}
+
+class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
+  late Future<List<Map<String, dynamic>>> profitLossData;
+
+  @override
+  void initState() {
+    super.initState();
+    profitLossData = fetchProfitLossData();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchProfitLossData() async {
+    final List<Map<String, dynamic>> data = [];
+
+    try {
+      final partySnapshot = await FirebaseFirestore.instance.collection('partyreport').get();
+      final partyNames = partySnapshot.docs.map((doc) => doc['partyName'] as String).toList();
+
+      for (String partyName in partyNames) {
+        final tripsSnapshot = await FirebaseFirestore.instance
+            .collection('trips')
+            .where('partyName', isEqualTo: partyName)
+            .get();
+
+        double totalRevenue = 0.0;
+        double totalExpenses = 0.0;
+
+        for (var tripDoc in tripsSnapshot.docs) {
+          final tripData = tripDoc.data();
+
+          double tripRevenue = double.tryParse(tripData['amount'] ?? '0') ?? 0.0;
+          totalRevenue += tripRevenue;
+
+          final List<dynamic> expenses = tripData['expenses'] ?? [];
+          for (var expense in expenses) {
+            double expenseAmount = double.tryParse(expense['amount']?.toString() ?? '0') ?? 0.0;
+            totalExpenses += expenseAmount;
+          }
+        }
+
+        double profit = totalRevenue - totalExpenses;
+
+        data.add({
+          'partyName': partyName,
+          'revenue': totalRevenue,
+          'expense': totalExpenses,
+          'profit': profit,
+        });
+      }
+    } catch (e) {
+      print('Error fetching profit/loss data: $e');
+    }
+
+    return data;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Profit/Loss Report", style: TextStyle(fontSize: 20)),
+        leading: IconButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: profitLossData,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error loading data'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No data available'));
+          }
+
+          final data = snapshot.data!;
+          double totalRevenue = data.fold(0.0, (sum, row) => sum + row['revenue']);
+          double totalExpenses = data.fold(0.0, (sum, row) => sum + row['expense']);
+          double totalProfit = data.fold(0.0, (sum, row) => sum + row['profit']);
+
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  // Table with data
+                  DataTable(
+                    headingRowColor: MaterialStateProperty.all(Colors.red),
+                    headingTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                    columnSpacing: 8, // Reduce column spacing
+                    columns: const [
+                      DataColumn(label: Text('Party Name')),
+                      DataColumn(label: Text('Revenue')),
+                      DataColumn(label: Text('Expense')),
+                      DataColumn(label: Text('Profit')),
+                    ],
+                    rows: [
+                      ...data.map(
+                        (row) => DataRow(
+                          cells: [
+                            DataCell(Text(row['partyName'], style: TextStyle(fontSize: 12))),
+                            DataCell(Text(row['revenue'].toStringAsFixed(2), style: TextStyle(fontSize: 12))),
+                            DataCell(Text(row['expense'].toStringAsFixed(2), style: TextStyle(fontSize: 12))),
+                            DataCell(Text(row['profit'].toStringAsFixed(2), style: TextStyle(fontSize: 12))),
+                          ],
+                        ),
+                      ).toList(),
+
+                      // Total row at the bottom of the table
+                      DataRow(
+                        color: MaterialStateProperty.all(Colors.green),
+                        cells: [
+                          DataCell(
+                            Text(
+                              "Totals",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              totalRevenue.toStringAsFixed(2),
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              totalExpenses.toStringAsFixed(2),
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              totalProfit.toStringAsFixed(2),
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 
 
 class PartyBalanceReportScreen extends StatefulWidget {
