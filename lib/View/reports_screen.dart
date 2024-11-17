@@ -57,7 +57,18 @@ class ReportsScreen extends StatelessWidget {
 
 
                   ReportTitleCard(
-                      title: "Party Balance", icon: Icons.report, onTap: () {}),
+                    title: "Party Balance",
+                    icon: Icons.payments,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PartyBalanceReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
                   ReportTitleCard(
                       title: "Supplier Balance",
                       icon: Icons.report,
@@ -113,6 +124,215 @@ class ReportTitleCard extends StatelessWidget {
   }
 }
 
+
+class PartyBalanceReportScreen extends StatefulWidget {
+  const PartyBalanceReportScreen({super.key});
+
+  @override
+  State<PartyBalanceReportScreen> createState() =>
+      _PartyBalanceReportScreenState();
+}
+
+class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
+  List<Map<String, dynamic>> partyBalances = [];
+  List<Map<String, dynamic>> filteredBalances = [];
+  String searchQuery = "";
+  String filter = "All";
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPartyBalances();
+  }
+
+  Future<void> _fetchPartyBalances() async {
+    final List<Map<String, dynamic>> balances = [];
+    final partyReportSnapshot =
+        await FirebaseFirestore.instance.collection('partyreport').get();
+
+    for (var partyDoc in partyReportSnapshot.docs) {
+      final partyName = partyDoc['partyName'];
+
+      final tripsSnapshot = await FirebaseFirestore.instance
+          .collection('trips')
+          .where('partyName', isEqualTo: partyName)
+          .get();
+
+      num totalBalance = 0;
+      for (var tripDoc in tripsSnapshot.docs) {
+        final tripData = tripDoc.data();
+        final num amount = num.tryParse(tripData['amount'] ?? '0') ?? 0;
+        final num advanceAmount =
+            num.tryParse(tripData['advanceAmount'] ?? '0') ?? 0;
+
+        num paymentsTotal = 0;
+        if (tripData['payments'] != null) {
+          for (var payment in tripData['payments']) {
+            paymentsTotal += num.tryParse(payment['amount'] ?? '0') ?? 0;
+          }
+        }
+
+        totalBalance += amount - (advanceAmount + paymentsTotal);
+      }
+
+      balances.add({
+        'partyName': partyName,
+        'balance': totalBalance,
+      });
+    }
+
+    setState(() {
+      partyBalances = balances;
+      filteredBalances = balances;
+      isLoading = false; // Data is fully loaded
+    });
+  }
+
+  void _filterBalances() {
+    setState(() {
+      filteredBalances = partyBalances.where((party) {
+        final matchesSearch = party['partyName']
+            .toLowerCase()
+            .contains(searchQuery.toLowerCase());
+        final matchesFilter = filter == "All" ||
+            (filter == "Positive" && party['balance'] > 0) ||
+            (filter == "Cleared" && party['balance'] <= 0);
+
+        return matchesSearch && matchesFilter;
+      }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Party Balance Report"),
+        leading: IconButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (value) {
+                      searchQuery = value;
+                      _filterBalances();
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search for a Party",
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                DropdownButton<String>(
+                  value: filter,
+                  onChanged: (value) {
+                    if (value != null) {
+                      filter = value;
+                      _filterBalances();
+                    }
+                  },
+                  items: [
+                    DropdownMenuItem(
+                      value: "All",
+                      child: Text("All"),
+                    ),
+                    DropdownMenuItem(
+                      value: "Positive",
+                      child: Text("Positive Balance"),
+                    ),
+                    DropdownMenuItem(
+                      value: "Cleared",
+                      child: Text("Cleared Balance"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: isLoading
+                ? Center(child: CircularProgressIndicator()) // Show loader while fetching data
+                : filteredBalances.isEmpty
+                    ? Center(child: Text("No results found.")) // Show when no results
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(8.0),
+                        itemCount: filteredBalances.length,
+                        itemBuilder: (context, index) {
+                          final party = filteredBalances[index];
+                          final balance = party['balance'];
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8.0),
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    balance > 0 ? Colors.green : Colors.red,
+                                child: Icon(
+                                  balance > 0
+                                      ? Icons.arrow_upward
+                                      : Icons.arrow_downward,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              title: Text(
+                                party['partyName'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text(
+                                balance > 0
+                                    ? "Amount to Receive"
+                                    : "Amount Cleared",
+                                style: TextStyle(
+                                  color: balance > 0
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              trailing: Text(
+                                NumberFormat.currency(
+                                        locale: 'en_IN', symbol: '₹')
+                                    .format(balance),
+                                style: TextStyle(
+                                  color: balance > 0
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 
 class PartyRevenueReportScreen extends StatefulWidget {
