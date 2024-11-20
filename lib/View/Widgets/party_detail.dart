@@ -513,31 +513,58 @@ Widget _buildPaymentList() {
 
 
 
-  Widget _buildAddLoadButton() {
-    return InkWell(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: const [
-            Text(
-              'Add load to this Trip',
-              style: TextStyle(
-                color: AppColors.primaryColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Spacer(),
-            Icon(Icons.chevron_right, color: AppColors.primaryColor),
-          ],
-        ),
+Widget _buildAddLoadButton() {
+  return InkWell(
+    onTap: () async {
+      try {
+        // Update the trip status in Firestore to "Trip Not Completed"
+        await FirebaseFirestore.instance
+            .collection('trips')
+            .doc(widget.tripId) // Ensure you have the tripId to update the correct trip
+            .update({
+          'status': 'Trip Not Completed', // Update the status to "Trip Not Completed"
+        });
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Trip marked as incomplete')),
+        );
+
+        // Trigger a refresh of the page by calling setState
+        setState(() {
+          // This will rebuild the widget, reflecting the updated status
+        });
+        
+      } catch (e) {
+        // Show error message if something goes wrong
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update trip status: $e')),
+        );
+      }
+    },
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
       ),
-    );
-  }
+      child: Row(
+        children: const [
+          Text(
+            'Mark Trip as Incomplete',
+            style: TextStyle(
+              color: AppColors.primaryColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Spacer(),
+          Icon(Icons.chevron_right, color: AppColors.primaryColor),
+        ],
+      ),
+    ),
+  );
+}
+
 
   Widget _buildAmountRow(String label, String amount, bool isEditable) {
     return Padding(
@@ -755,11 +782,13 @@ Widget _buildPaymentList() {
   final String amount = advanceController.text;
   if (amount.isNotEmpty) {
     try {
+      // Prepare the payment data
       Map<String, dynamic> newPayment = {
         'amount': amount,
         'receivedByDriver': isReceivedByDriver, // Include the flag for payment
       };
 
+      // Always update the 'payments' field in the 'trips' collection
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
@@ -767,10 +796,36 @@ Widget _buildPaymentList() {
         'payments': FieldValue.arrayUnion([newPayment]), // Add to payments array
       });
 
+      // If the payment is received by the driver, add it to the driverTransactions collection
+      if (isReceivedByDriver) {
+        // Fetch the driver name from the trip document
+        final tripDoc = await FirebaseFirestore.instance
+            .collection('trips')
+            .doc(widget.tripId)
+            .get();
+
+        final driverName = tripDoc.exists && tripDoc.data()?.containsKey('driverName') == true
+            ? tripDoc['driverName']
+            : 'Unknown Driver'; // Default value in case driverName is missing
+
+        final timestamp = FieldValue.serverTimestamp(); // Use server timestamp for consistency
+
+        // Add to driverTransactions collection
+        await FirebaseFirestore.instance.collection('drivertransactions').add({
+          'amount': amount,
+          'description': 'Trip Payment',
+          'driverName': driverName,
+          'timestamp': timestamp,
+          'type': 'got', // The transaction type is "got"
+        });
+      }
+
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment amount added successfully')),
       );
 
+      // Clear the text field after adding the payment
       advanceController.clear();
 
       // Refresh payment list and pending balance
@@ -792,6 +847,9 @@ Widget _buildPaymentList() {
     );
   }
 }
+
+
+
 
 
 
