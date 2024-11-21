@@ -78,44 +78,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   SizedBox(height: 20),
-                  // Row(
-                  //   mainAxisAlignment: MainAxisAlignment.center,
-                  //   children: [
-                  //     Text('Driver Status: ', style: TextStyle(fontSize: 18)),
-                  //     Switch(
-                  //       value: _isDriver == 'true',
-                  //       onChanged: (bool value) {
-                  //         _updateDriverStatus(value);
-                  //       },
-                  //     ),
-                  //   ],
+
+                  // Text(
+                  //   _isDriver == 'true' ? 'You are a driver' : 'You are a Owner',
+                  //   style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
                   // ),
-                  Text(
-                    _isDriver == 'true' ? 'You are a driver' : 'You are a Owner',
-                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
-                  ),
-                  SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => TruckScreen(),
-                        ),
-                      );
-                    },
-                    child: ListTile(
-                      title: Text("Your Vehicles"),
-                      trailing: Icon(Icons.arrow_right),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 26),
-                    child: Divider(),
-                  ),
-                  ListTile(
-                    title: Text("Drivers"),
-                    trailing: Icon(Icons.arrow_right),
-                  ),
+                  // SizedBox(height: 20),
+                  // GestureDetector(
+                  //   onTap: () {
+                  //     Navigator.of(context).push(
+                  //       MaterialPageRoute(
+                  //         builder: (context) => TruckScreen(),
+                  //       ),
+                  //     );
+                  //   },
+                  //   child: ListTile(
+                  //     title: Text("Your Vehicles"),
+                  //     trailing: Icon(Icons.arrow_right),
+                  //   ),
+                  // ),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(horizontal: 26),
+                  //   child: Divider(),
+                  // ),
+                  // ListTile(
+                  //   title: Text("Drivers"),
+                  //   trailing: Icon(Icons.arrow_right),
+                  // ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 26),
                     child: Divider(),
