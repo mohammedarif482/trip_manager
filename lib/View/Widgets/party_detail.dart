@@ -314,7 +314,12 @@ void _fetchTripStatus() async {
 
 
 
-  Widget _buildFinancialDetails() {
+  // Assuming you have a widget method for displaying the advances
+Widget _buildFinancialDetails() {
+  // Fetch the list of advances from Firestore (assuming it's stored in 'advances' field)
+  final List<Map<String, dynamic>> advanceData = List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
+  final List<Map<String, dynamic>> paymentData = List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
+
   return Container(
     decoration: BoxDecoration(
       border: Border.all(color: Colors.grey.shade300),
@@ -323,10 +328,40 @@ void _fetchTripStatus() async {
     child: Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start, // Align to the left
         children: [
           _buildAmountRow('Freight Amount', '₹ ${widget.tripData['amount']}', true),
           const SizedBox(height: 4),
-          _buildAmountRow('Advance', '₹ $advanceAmount', true),
+
+          // Show multiple advances with their date and method
+          if (advanceData.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start, // Align advances to the left
+              children: [
+                const Text(
+                  'Advances:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...advanceData.map((advance) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('₹ ${advance['amount']}', style: TextStyle(fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text('Date: ${advance['date']}', style: TextStyle(color: Colors.grey)),
+                        Text('Payment Method: ${advance['paymentMethod']}', style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            )
+          else
+            const Text('No advances added yet.', style: TextStyle(color: Colors.grey)),
+
           const SizedBox(height: 8),
           const Divider(height: 32),
           const SizedBox(height: 16),
@@ -334,7 +369,34 @@ void _fetchTripStatus() async {
           _buildAdvanceSection(),
 
           // Display Payments List directly under Advance section
-          _buildPaymentsList(),
+          if (paymentData.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Payments:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...paymentData.map((payment) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('₹ ${payment['amount']}', style: TextStyle(fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text('Date: ${payment['date']}', style: TextStyle(color: Colors.grey)),
+                        Text('Payment Method: ${payment['paymentMethod']}', style: TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            )
+          else
+            const Text('No payments made yet.', style: TextStyle(color: Colors.grey)),
 
           const SizedBox(height: 16),
           Row(
@@ -377,6 +439,10 @@ void _fetchTripStatus() async {
     ),
   );
 }
+
+
+
+
 
 Widget _buildPaymentsList() {
   return StreamBuilder<DocumentSnapshot>(
@@ -484,7 +550,7 @@ Widget _buildPaymentList() {
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(
-        advanceAmount == '0' || advanceAmount.isEmpty ? 'Add Advance' : 'Add Payment',
+        'Add Advance', // Always show 'Add Advance'
         style: const TextStyle(
           fontWeight: FontWeight.bold,
           color: AppColors.primaryColor,
@@ -492,11 +558,26 @@ Widget _buildPaymentList() {
       ),
       TextButton(
         onPressed: () {
-          if (advanceAmount == '0' || advanceAmount.isEmpty) {
-            _showAdvanceDialog(); // Show dialog to add advance
-          } else {
-            _showAdvanceDialog(); // Show dialog to add payment
-          }
+          _showAdvanceDialog(); // Show dialog to add advance
+        },
+        child: const Text(
+          '+',
+          style: TextStyle(
+            color: AppColors.primaryColor,
+            fontSize: 20,
+          ),
+        ),
+      ),
+      Text(
+        'Add Payment', // Always show 'Add Payment'
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: AppColors.primaryColor,
+        ),
+      ),
+      TextButton(
+        onPressed: () {
+          _showPaymentDialog(); // Show dialog to add payment
         },
         child: const Text(
           '+',
@@ -648,9 +729,12 @@ Widget _buildAddLoadButton() {
 
 
 
-  void _showAdvanceDialog() {
-  bool isAddingAdvance = advanceAmount == '0' || advanceAmount.isEmpty;
-  bool isReceivedByDriver = false; // Track switch state
+void _showAdvanceDialog() {
+  // Create controllers for the form fields
+  TextEditingController advanceController = TextEditingController();
+  TextEditingController dateController = TextEditingController();
+  bool isReceivedByDriver = false;
+  String selectedPaymentMethod = 'Cash';
 
   showDialog(
     context: context,
@@ -658,45 +742,109 @@ Widget _buildAddLoadButton() {
       return StatefulBuilder(
         builder: (BuildContext context, StateSetter setStateDialog) {
           return AlertDialog(
-            title: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min, // Adjust size to fit the content
-              children: [
-                TextField(
-                  controller: advanceController,
-                  decoration: const InputDecoration(labelText: 'Enter Amount'),
-                  keyboardType: TextInputType.number,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Received by Driver'),
-                    Switch(
-                      value: isReceivedByDriver,
-                      onChanged: (bool newValue) {
+            title: const Text('Add Advance'),
+            content: SingleChildScrollView( // Allow content to scroll if necessary
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Advance Amount Field (treated as string)
+                  TextField(
+                    controller: advanceController,
+                    decoration: const InputDecoration(labelText: 'Enter Advance Amount'),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) {
+                      print('Amount field changed: $value');
+                    },
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Received by Driver Switch
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Received by Driver'),
+                      Switch(
+                        value: isReceivedByDriver,
+                        onChanged: (bool newValue) {
+                          setStateDialog(() {
+                            isReceivedByDriver = newValue;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Payment Method Dropdown
+                  DropdownButton<String>(
+                    value: selectedPaymentMethod,
+                    onChanged: (String? newValue) {
+                      setStateDialog(() {
+                        selectedPaymentMethod = newValue!;
+                      });
+                    },
+                    items: <String>['Cash', 'UPI', 'Credit Card', 'Bank Transfer']
+                        .map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    isExpanded: true,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Date Picker Field
+                  TextField(
+                    controller: dateController,
+                    decoration: const InputDecoration(labelText: 'Select Date'),
+                    readOnly: true, // Prevent typing, show date picker on tap
+                    onTap: () async {
+                      DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2101),
+                      );
+                      if (pickedDate != null) {
+                        // Format the selected date to 'YYYY-MM-DD'
+                        String formattedDate = "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
                         setStateDialog(() {
-                          isReceivedByDriver = newValue; // Update the switch state within the dialog
+                          dateController.text = formattedDate; // Set the formatted date in controller
                         });
-                      },
-                    ),
-                  ],
-                ),
-              ],
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
             actions: [
+              // Cancel Button
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
               ),
+              // Add Advance Button
               TextButton(
                 onPressed: () {
-                  if (isAddingAdvance) {
-                    _addAdvanceToFirestore(isReceivedByDriver); // Pass the switch state
+                  String enteredAmount = advanceController.text.trim();
+                  String enteredDate = dateController.text.trim();
+
+                  print('Entered Amount: $enteredAmount');
+                  print('Entered Date: $enteredDate');
+
+                  // Validate for empty fields
+                  if (enteredAmount.isEmpty || enteredDate.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a valid amount and date')),
+                    );
                   } else {
-                    _addPaymentToFirestore(isReceivedByDriver); // Pass the switch state
+                    // Call the _addAdvanceToFirestore function to add the data to Firestore
+                    _addAdvanceToFirestore(isReceivedByDriver, selectedPaymentMethod, enteredDate, enteredAmount);
+                    Navigator.of(context).pop(); // Close the dialog after adding the advance
                   }
                 },
-                child: Text(isAddingAdvance ? 'Add Advance' : 'Add Payment'),
+                child: const Text('Add Advance'),
               ),
             ],
           );
@@ -710,15 +858,150 @@ Widget _buildAddLoadButton() {
 
 
 
-  void _addAdvanceToFirestore(bool isReceivedByDriver) async {
-  final String amount = advanceController.text;
-  if (amount.isNotEmpty) {
+
+
+
+void _showPaymentDialog() {
+  bool isReceivedByDriver = false; // Track switch state
+  TextEditingController paymentController = TextEditingController(); // Controller for payment amount field
+  TextEditingController dateController = TextEditingController(); // Controller for date field
+  String selectedPaymentMethod = 'Cash'; // Default payment method
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setStateDialog) {
+          return AlertDialog(
+            title: const Text('Add Payment'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min, // Adjust size to fit the content
+              children: [
+                TextField(
+                  controller: paymentController,
+                  decoration: const InputDecoration(labelText: 'Enter Amount'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Received by Driver'),
+                    Switch(
+                      value: isReceivedByDriver,
+                      onChanged: (bool newValue) {
+                        setStateDialog(() {
+                          isReceivedByDriver = newValue;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Date Picker field
+                TextField(
+                  controller: dateController,
+                  decoration: const InputDecoration(labelText: 'Select Date'),
+                  readOnly: true, // Prevent typing, only allow date picker
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2101),
+                    );
+                    if (pickedDate != null) {
+                      setStateDialog(() {
+                        dateController.text = "${pickedDate.toLocal()}".split(' ')[0]; // Format as YYYY-MM-DD
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                // Method of Payment dropdown
+                DropdownButton<String>(
+                  value: selectedPaymentMethod,
+                  onChanged: (String? newValue) {
+                    setStateDialog(() {
+                      selectedPaymentMethod = newValue!; // Update selected payment method
+                    });
+                  },
+                  items: <String>['Cash', 'UPI', 'Credit Card', 'Bank Transfer']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  isExpanded: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  String enteredAmount = paymentController.text.trim();
+                  String enteredDate = dateController.text.trim();
+
+                  // Validate fields before calling the add payment function
+                  if (enteredAmount.isEmpty || enteredDate.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a valid amount and date')),
+                    );
+                  } else {
+                    // Call the _addPaymentToFirestore function to add the data to Firestore
+                    _addPaymentToFirestore(
+                      isReceivedByDriver, 
+                      selectedPaymentMethod, 
+                      enteredDate, 
+                      enteredAmount,
+                    );
+                    Navigator.of(context).pop(); // Close the dialog after adding the payment
+                  }
+                },
+                child: const Text('Add Payment'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+
+
+
+
+
+
+
+
+  void _addAdvanceToFirestore(
+  bool isReceivedByDriver, 
+  String selectedPaymentMethod, 
+  String enteredDate, 
+  String enteredAmount
+) async {
+  if (enteredAmount.isNotEmpty) {
     try {
       // Update the trip with advance amount
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
-          .update({'advanceAmount': amount}); // Update only advanceAmount
+          .update({
+        'advanceAmount': enteredAmount,
+        'advances': FieldValue.arrayUnion([{
+          'amount': enteredAmount,
+          'receivedByDriver': isReceivedByDriver,
+          'paymentMethod': selectedPaymentMethod,
+          'date': enteredDate,
+        }])
+      }); // Update only advanceAmount and add to 'advances' array
 
       // If the switch is on, also update the driverTransactions collection
       if (isReceivedByDriver) {
@@ -737,7 +1020,7 @@ Widget _buildAddLoadButton() {
 
         // Add to driverTransactions collection
         await FirebaseFirestore.instance.collection('drivertransactions').add({
-          'amount': amount,
+          'amount': enteredAmount,
           'description': 'Trip advance',
           'driverName': driverName, // Use the real driver name here
           'timestamp': timestamp,
@@ -778,25 +1061,34 @@ Widget _buildAddLoadButton() {
 
 
 
-  void _addPaymentToFirestore(bool isReceivedByDriver) async {
-  final String amount = advanceController.text;
-  if (amount.isNotEmpty) {
-    try {
-      // Prepare the payment data
-      Map<String, dynamic> newPayment = {
-        'amount': amount,
-        'receivedByDriver': isReceivedByDriver, // Include the flag for payment
-      };
 
-      // Always update the 'payments' field in the 'trips' collection
+
+
+
+
+  void _addPaymentToFirestore(
+  bool isReceivedByDriver, 
+  String selectedPaymentMethod, 
+  String enteredDate, 
+  String enteredAmount
+) async {
+  if (enteredAmount.isNotEmpty) {
+    try {
+      // Update the trip with payment amount
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
           .update({
-        'payments': FieldValue.arrayUnion([newPayment]), // Add to payments array
-      });
+        'paymentAmount': enteredAmount,
+        'payments': FieldValue.arrayUnion([{
+          'amount': enteredAmount,
+          'receivedByDriver': isReceivedByDriver,
+          'paymentMethod': selectedPaymentMethod,
+          'date': enteredDate,
+        }])
+      }); // Update only paymentAmount and add to 'payments' array
 
-      // If the payment is received by the driver, add it to the driverTransactions collection
+      // If the switch is on, also update the driverTransactions collection
       if (isReceivedByDriver) {
         // Fetch the driver name from the trip document
         final tripDoc = await FirebaseFirestore.instance
@@ -804,6 +1096,7 @@ Widget _buildAddLoadButton() {
             .doc(widget.tripId)
             .get();
 
+        // Make sure the driver name exists in the document
         final driverName = tripDoc.exists && tripDoc.data()?.containsKey('driverName') == true
             ? tripDoc['driverName']
             : 'Unknown Driver'; // Default value in case driverName is missing
@@ -812,41 +1105,45 @@ Widget _buildAddLoadButton() {
 
         // Add to driverTransactions collection
         await FirebaseFirestore.instance.collection('drivertransactions').add({
-          'amount': amount,
-          'description': 'Trip Payment',
-          'driverName': driverName,
+          'amount': enteredAmount,
+          'description': 'Trip payment',
+          'driverName': driverName, // Use the real driver name here
           'timestamp': timestamp,
-          'type': 'got', // The transaction type is "got"
+          'type': 'received', // The transaction type is "received"
         });
       }
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment amount added successfully')),
+        SnackBar(content: const Text('Payment amount added successfully')),
       );
-
-      // Clear the text field after adding the payment
-      advanceController.clear();
 
       // Refresh payment list and pending balance
       await _fetchPaymentAmount();
 
-      setState(() {
-        // Trigger UI update for the payment list and pending balance
-      });
-
-      Navigator.of(context).pop(); // Close the dialog if necessary
+      advanceController.clear();
+      Navigator.of(context).pop();
     } catch (error) {
+      // Handle error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add payment: $error')),
       );
     }
   } else {
+    // Show message if the amount is empty
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Please enter a valid amount')),
     );
   }
 }
+
+
+
+
+
+
+
+
 
 
 
