@@ -321,176 +321,201 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   Widget _buildFinancialDetails() {
-    final List<Map<String, dynamic>> advanceData =
-        List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
-    final List<Map<String, dynamic>> paymentData =
-        List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
+  final List<Map<String, dynamic>> advanceData =
+      List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
+  final List<Map<String, dynamic>> paymentData =
+      List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, // Align to the left
-          children: [
-            _buildAmountRow(
-                'Freight Amount', '₹ ${widget.tripData['amount']}', true),
-            const SizedBox(height: 4),
-            if (advanceData.isNotEmpty)
-              Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start, // Align advances to the left
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Advances:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      _buildAdvanceSection()
-                    ],
+  return Container(
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildAmountRow(
+              'Freight Amount', '₹ ${widget.tripData['amount']}', true),
+          const SizedBox(height: 4),
+          if (advanceData.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Advances:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _showAdvanceDialog, // Function to add advances
+                      tooltip: 'Add Advance',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.grey.shade100,
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Colors.grey.shade100,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: advanceData.map((advance) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('₹ ${advance['amount']}',
-                                  style: TextStyle(fontSize: 16)),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('${advance['date']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                  Text('${advance['paymentMethod']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  )
-                ],
-              )
-            else
-              const Text('No advances added yet.',
-                  style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 8),
-            const Divider(height: 32),
-            const SizedBox(height: 16),
-            if (paymentData.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Payments:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      _buildPaymentSection()
-                    ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: advanceData.map((advance) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('₹ ${advance['amount']}',
+                                style: TextStyle(fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${advance['date']}',
+                                    style: TextStyle(color: Colors.grey)),
+                                Text('${advance['paymentMethod']}',
+                                    style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Colors.grey.shade100,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: paymentData.map((payment) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('₹ ${payment['amount']}',
-                                  style: TextStyle(fontSize: 16)),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('${payment['date']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                  Text('${payment['paymentMethod']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  )
-                ],
-              )
-            else
-              const Text('No payments made yet.',
-                  style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 16),
+                ),
+              ],
+            )
+          else
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Pending Balance',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black),
-                ),
-                Text(
-                  '₹ $pendingBalance',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                const Text('No advances added yet.',
+                    style: TextStyle(color: Colors.grey)),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _showAdvanceDialog,
+                  tooltip: 'Add Advance',
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
+          const SizedBox(height: 8),
+          const Divider(height: 32),
+          const SizedBox(height: 16),
+          if (paymentData.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextButton.icon(
-                  onPressed: _showAddChargesDialog,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Note'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primaryColor,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Payments:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _showPaymentDialog, // Function to add payments
+                      tooltip: 'Add Payment',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.grey.shade100,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: paymentData.map((payment) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('₹ ${payment['amount']}',
+                                style: TextStyle(fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${payment['date']}',
+                                    style: TextStyle(color: Colors.grey)),
+                                Text('${payment['paymentMethod']}',
+                                    style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
-                const Spacer(),
-                OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.primaryColor),
-                  ),
-                  child: const Text('Request Money'),
+              ],
+            )
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('No payments made yet.',
+                    style: TextStyle(color: Colors.grey)),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _showPaymentDialog,
+                  tooltip: 'Add Payment',
                 ),
               ],
             ),
-          ],
-        ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Pending Balance',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+              Text(
+                '₹ $pendingBalance',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _showAddChargesDialog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Note'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primaryColor,
+                ),
+              ),
+              const Spacer(),
+              OutlinedButton(
+                onPressed: () {},
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primaryColor),
+                ),
+                child: const Text('Request Money'),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildPaymentsList() {
     return StreamBuilder<DocumentSnapshot>(
@@ -709,60 +734,83 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   Future<void> _fetchPaymentAmount() async {
-    try {
-      DocumentSnapshot tripDoc = await FirebaseFirestore.instance
-          .collection('trips')
-          .doc(widget.tripId)
-          .get();
+  try {
+    // Fetch trip data from Firestore
+    DocumentSnapshot tripDoc = await FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .get();
 
-      if (tripDoc.exists && tripDoc.data() != null) {
-        var data = tripDoc.data() as Map<String, dynamic>;
-        setState(() {
-          advanceAmount = data['advanceAmount']?.toString() ?? '0';
-          paymentAmounts = data['payments'] != null
-              ? List<String>.from(data['payments']
-                  .map((payment) => payment['amount']?.toString() ?? '0'))
-              : [];
-          _hasAdvance = true;
-        });
-        _calculatePendingBalance(); // Calculate pending balance after fetching
-      } else {
-        setState(() {
-          advanceAmount = '0';
-          paymentAmounts = [];
-          _hasAdvance = false;
-        });
-        _calculatePendingBalance(); // Ensure balance is recalculated
-      }
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching payment amount: $error')),
-      );
-    }
-  }
+    if (tripDoc.exists && tripDoc.data() != null) {
+      var data = tripDoc.data() as Map<String, dynamic>;  // Cast Firestore data
 
-  void _calculatePendingBalance() {
-    final int freightAmount =
-        int.tryParse(widget.tripData['amount']?.toString() ?? '0') ?? 0;
-    final int advanceAmountInt = int.tryParse(advanceAmount) ?? 0;
+      // Safely retrieve and calculate the total of 'amount' from the 'advances' array
+      final List<dynamic>? advances = data['advances'];  // Get the 'advances' field as List
+      final int totalAdvances = advances?.fold<int>(
+        0,
+        (sum, advance) {
+          // Make sure 'advance' is a Map and 'amount' is properly converted to int
+          final amount = int.tryParse(advance['amount']?.toString() ?? '0') ?? 0;
+          return sum + amount;
+        },
+      ) ?? 0;  // Default to 0 if 'advances' is null
 
-    final int totalPayments = paymentAmounts.fold<int>(
-      0,
-      (sum, payment) => sum + (int.tryParse(payment) ?? 0),
-    );
+      // Safely retrieve payment amounts (if available) and store them as List<String>
+      final List<dynamic>? payments = data['payments'];
+      final List<String> paymentAmounts = payments != null
+          ? List<String>.from(
+              payments.map((payment) => payment['amount']?.toString() ?? '0'),
+            )
+          : [];
 
-    int calculatedPendingBalance;
-    if (advanceAmountInt == 0 && totalPayments == 0) {
-      calculatedPendingBalance = freightAmount;
+      // Set state with the calculated values
+      setState(() {
+        this.paymentAmounts = paymentAmounts; // Update the payment amounts
+        _hasAdvance = true; // We now have advances
+      });
+
+      // Recalculate the pending balance after fetching the data
+      _calculatePendingBalance(totalAdvances);
     } else {
-      calculatedPendingBalance =
-          freightAmount - (advanceAmountInt + totalPayments);
-    }
+      // Handle case when trip document doesn't exist or has no data
+      setState(() {
+        paymentAmounts = [];
+        _hasAdvance = false;
+      });
 
-    setState(() {
-      pendingBalance = calculatedPendingBalance.toString();
-    });
+      // Ensure the pending balance is recalculated when no data is found
+      _calculatePendingBalance(0); // No advances or payments found
+    }
+  } catch (error) {
+    // Show error message if fetching payment data fails
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error fetching payment amount: $error')),
+    );
   }
+}
+
+void _calculatePendingBalance(int totalAdvances) {
+  final int freightAmount = int.tryParse(widget.tripData['amount']?.toString() ?? '0') ?? 0;
+
+  // Calculate total payments
+  final int totalPayments = paymentAmounts.fold<int>(
+    0,
+    (sum, payment) => sum + (int.tryParse(payment) ?? 0),
+  );
+
+  // Calculate pending balance
+  int calculatedPendingBalance = freightAmount - (totalAdvances + totalPayments);
+
+  // Update state with calculated balance
+  setState(() {
+    pendingBalance = calculatedPendingBalance.toString();
+  });
+}
+
+
+
+  
+
 
   void _showAdvanceDialog() {
     TextEditingController advanceController = TextEditingController();
@@ -1049,6 +1097,9 @@ class _PartyDetailState extends State<PartyDetail> {
             'description': 'Trip advance',
             'driverName': driverName, // Use the real driver name here
             'timestamp': timestamp,
+            'paymentMethod': selectedPaymentMethod,
+            'date': enteredDate,
+            'fromtrip':'true',
             'type': 'got', // The transaction type is "got"
           });
         }
@@ -1117,7 +1168,10 @@ class _PartyDetailState extends State<PartyDetail> {
             'description': 'Trip payment',
             'driverName': driverName, // Use the real driver name here
             'timestamp': timestamp,
-            'type': 'received', // The transaction type is "received"
+            'paymentMethod': selectedPaymentMethod,
+            'date': enteredDate,
+            'fromtrip':'true',
+            'type': 'got', // The transaction type is "received"
           });
         }
         ScaffoldMessenger.of(context).showSnackBar(
