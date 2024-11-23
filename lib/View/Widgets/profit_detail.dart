@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:easy_stepper/easy_stepper.dart';
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 
@@ -27,8 +26,8 @@ class _ProfitDetailState extends State<ProfitDetail> {
           const SizedBox(height: 24),
           Container(
             decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 255, 245, 245),
-              border: Border.all(color: Colors.grey.shade300),
+              color: Colors.grey.shade100,
+              // border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
@@ -53,42 +52,63 @@ class _ProfitDetailState extends State<ProfitDetail> {
   }
 
   Widget _buildExpenses() {
-  return StreamBuilder<DocumentSnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('trips')
-        .doc(widget.tripId)
-        .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const CircularProgressIndicator();
-      }
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('trips')
+          .doc(widget.tripId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
 
-      if (!snapshot.hasData || !snapshot.data!.exists) {
-        // No document found or doesn't exist
-        return _buildAmountRow('Expenses', '₹0', false);
-      }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          // No document found or doesn't exist
+          return _buildAmountRow('Expenses', '₹0', false);
+        }
 
-      // Document exists
-      var tripData = snapshot.data!.data() as Map<String, dynamic>;
-      List expenses = tripData.containsKey('expenses') ? tripData['expenses'] : [];
+        // Document exists
+        var tripData = snapshot.data!.data() as Map<String, dynamic>;
+        List expenses =
+            tripData.containsKey('expenses') ? tripData['expenses'] : [];
 
-      // Calculate freight amount
-      String cleanedString = tripData['amount'].replaceAll(RegExp(r'[^0-9]'), '');
-      double amount = double.parse(cleanedString);
-      double totalExpense = expenses.fold(
-          0.0, (sum, expense) => sum + (expense['amount'] ?? 0.0));
+        // Calculate freight amount
+        String cleanedString =
+            tripData['amount'].replaceAll(RegExp(r'[^0-9]'), '');
+        double amount = double.parse(cleanedString);
+        double totalExpense = expenses.fold(
+            0.0, (sum, expense) => sum + (expense['amount'] ?? 0.0));
 
-      // Calculate commission and Bhata
-      double commission = amount * 0.04;
-      double bhata = amount * 0.20;
+        // Calculate commission and Bhata
+        double commission = amount * 0.04;
+        double bhata = amount * 0.20;
 
-      // Calculate profit
-      double profit = amount - (totalExpense + commission + bhata);
+        // Calculate profit
+        double profit = amount - (totalExpense + commission + bhata);
 
-      if (expenses.isEmpty) {
+        if (expenses.isEmpty) {
+          return Column(
+            children: [
+              _buildAmountRow('Expenses', '₹0', false),
+              const Divider(height: 32),
+              _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
+              _buildAmountRow('Commission', '- ₹$commission', false),
+              _buildAmountRow('Bhata', '- ₹$bhata', false),
+              const Divider(height: 32),
+              _buildAmountRow('Profit', '₹$profit', false),
+            ],
+          );
+        }
+
         return Column(
           children: [
-            _buildAmountRow('Expenses', '₹0', false),
+            ...expenses.map((expense) {
+              return _buildAmountRow(
+                expense['expense'],
+                '₹${expense['amount']}',
+                false,
+              );
+            }).toList(),
             const Divider(height: 32),
             _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
             _buildAmountRow('Commission', '- ₹$commission', false),
@@ -97,29 +117,9 @@ class _ProfitDetailState extends State<ProfitDetail> {
             _buildAmountRow('Profit', '₹$profit', false),
           ],
         );
-      }
-
-      return Column(
-        children: [
-          ...expenses.map((expense) {
-            return _buildAmountRow(
-              expense['expense'],
-              '₹${expense['amount']}',
-              false,
-            );
-          }).toList(),
-          const Divider(height: 32),
-          _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
-          _buildAmountRow('Commission', '- ₹$commission', false),
-          _buildAmountRow('Bhata', '- ₹$bhata', false),
-          const Divider(height: 32),
-          _buildAmountRow('Profit', '₹$profit', false),
-        ],
-      );
-    },
-  );
-}
-
+      },
+    );
+  }
 
   Widget _buildActionLink(String text, VoidCallback onTap) {
     return GestureDetector(

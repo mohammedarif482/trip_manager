@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
-import 'package:easy_stepper/easy_stepper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tripmanager/View/Widgets/party_detail.dart';
 import 'package:tripmanager/View/Widgets/profit_detail.dart';

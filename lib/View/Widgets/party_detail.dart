@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:easy_stepper/easy_stepper.dart';
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 
@@ -30,7 +29,6 @@ class _PartyDetailState extends State<PartyDetail> {
   @override
   void initState() {
     super.initState();
-    // Fetch the advance amount when the widget is initialized
     _fetchAdvanceAmount();
     _fetchPaymentAmount();
     _fetchPayments();
@@ -71,7 +69,6 @@ class _PartyDetailState extends State<PartyDetail> {
           .get();
 
       if (doc.exists) {
-        // Cast the document data to Map<String, dynamic>
         final data = doc.data() as Map<String, dynamic>?; // Use a nullable Map
 
         if (data != null && data.containsKey('advanceAmount')) {
@@ -80,20 +77,57 @@ class _PartyDetailState extends State<PartyDetail> {
                 "0"; // Update advanceAmount with the value from Firestore
           });
         } else {
-          // Optionally handle the case where advanceAmount is not present
           setState(() {
             advanceAmount = "0"; // or whatever default value you prefer
           });
         }
       }
     } catch (e) {
-      // Handle the error (e.g., show a snackbar)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching advance amount: $e')),
       );
     }
   }
 
+  int _currentStep = 0;
+
+  void _nextStep() {
+    if (_currentStep < 2) {
+      setState(() {
+        _currentStep++; // Advance to the next step
+      });
+    } else {
+      setState(() {
+        _currentStep = 0; // Reset to the first step after the last step
+      });
+    }
+  }
+
+  void _showConfirmationDialog() async {
+    bool? confirmed = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirm'),
+        content: Text('Do you want to proceed to the next step?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false), // Cancel
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true), // Confirm
+            child: Text('Yes'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      _nextStep(); // Go to the next step only if confirmed
+    }
+  }
+
+  final stepLabels = ['Trip Received', 'On the Way ', 'Delivered'];
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -103,17 +137,56 @@ class _PartyDetailState extends State<PartyDetail> {
           _buildTripInfo(),
           SizedBox(height: 10),
           _buildLocationInfo(),
-          EasyStepper(
-            activeStep: activeStep,
-            activeStepTextColor: Colors.black87,
-            finishedStepTextColor: Colors.black87,
-            internalPadding: 0,
-            showLoadingAnimation: false,
-            stepRadius: 8,
-            showStepBorder: false,
-            steps: _buildStepperSteps(),
-            onStepReached: (index) => setState(() => activeStep = index),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              return Row(
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: _currentStep >= index
+                            ? AppColors.primaryColor
+                            : Colors.grey.shade300,
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: _currentStep >= index
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        stepLabels[index],
+                        style: TextStyle(
+                          color: _currentStep >= index
+                              ? AppColors.primaryColor
+                              : Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (index != 2)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 26),
+                      child: Container(
+                        width: 70,
+                        height: 2,
+                        color: _currentStep > index
+                            ? AppColors.primaryColor
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                ],
+              );
+            }),
           ),
+          const SizedBox(height: 20),
           const SizedBox(height: 24),
           _buildActionButtons(),
           const SizedBox(height: 24),
@@ -163,28 +236,6 @@ class _PartyDetailState extends State<PartyDetail> {
     );
   }
 
-  List<EasyStep> _buildStepperSteps() {
-    return [
-      stepperStyle("Order Received"),
-      stepperStyle("On the Way"),
-      stepperStyle("Delivered"),
-    ];
-  }
-
-  EasyStep stepperStyle(String title) {
-    return EasyStep(
-      customStep: CircleAvatar(
-        radius: 25,
-        backgroundColor: Colors.white,
-        child: CircleAvatar(
-          radius: 25,
-          backgroundColor: activeStep >= 0 ? Colors.red : Colors.white,
-        ),
-      ),
-      title: title,
-    );
-  }
-
   bool _isTripCompleted = false;
 
   Widget _buildActionButtons() {
@@ -194,7 +245,7 @@ class _PartyDetailState extends State<PartyDetail> {
           child: OutlinedButton(
             onPressed: _isTripCompleted
                 ? null
-                : _completeTrip, // Disable if trip is completed
+                : _showConfirmationDialog, // Disable if trip is completed
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.secondaryColor),
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -225,7 +276,6 @@ class _PartyDetailState extends State<PartyDetail> {
     );
   }
 
-// Function to handle the trip completion
   Future<void> _completeTrip() async {
     try {
       await FirebaseFirestore.instance
@@ -249,7 +299,6 @@ class _PartyDetailState extends State<PartyDetail> {
     }
   }
 
-// Fetch trip status when building the widget to disable the button if completed
   void _fetchTripStatus() async {
     try {
       DocumentSnapshot tripDoc = await FirebaseFirestore.instance
@@ -271,9 +320,7 @@ class _PartyDetailState extends State<PartyDetail> {
     }
   }
 
-  // Assuming you have a widget method for displaying the advances
   Widget _buildFinancialDetails() {
-    // Fetch the list of advances from Firestore (assuming it's stored in 'advances' field)
     final List<Map<String, dynamic>> advanceData =
         List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
     final List<Map<String, dynamic>> paymentData =
@@ -292,8 +339,6 @@ class _PartyDetailState extends State<PartyDetail> {
             _buildAmountRow(
                 'Freight Amount', '₹ ${widget.tripData['amount']}', true),
             const SizedBox(height: 4),
-
-            // Show multiple advances with their date and method
             if (advanceData.isNotEmpty)
               Column(
                 crossAxisAlignment:
@@ -348,14 +393,9 @@ class _PartyDetailState extends State<PartyDetail> {
             else
               const Text('No advances added yet.',
                   style: TextStyle(color: Colors.grey)),
-
             const SizedBox(height: 8),
             const Divider(height: 32),
             const SizedBox(height: 16),
-
-            // _buildAdvanceSection(),
-
-            // Display Payments List directly under Advance section
             if (paymentData.isNotEmpty)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +411,6 @@ class _PartyDetailState extends State<PartyDetail> {
                     ],
                   ),
                   const SizedBox(height: 8),
-
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -405,30 +444,11 @@ class _PartyDetailState extends State<PartyDetail> {
                       }).toList(),
                     ),
                   )
-                  // ...paymentData.map((payment) {
-                  //   return Padding(
-                  //     padding: const EdgeInsets.symmetric(vertical: 4),
-                  //     child: Column(
-                  //       crossAxisAlignment: CrossAxisAlignment.start,
-                  //       children: [
-                  //         Text('₹ ${payment['amount']}',
-                  //             style: TextStyle(fontSize: 16)),
-                  //         const SizedBox(height: 4),
-                  //         Text('Date: ${payment['date']}',
-                  //             style: TextStyle(color: Colors.grey)),
-                  //         Text('Payment Method: ${payment['paymentMethod']}',
-                  //             style: TextStyle(color: Colors.grey)),
-                  //         const SizedBox(height: 8),
-                  //       ],
-                  //     ),
-                  //   );
-                  // }).toList(),
                 ],
               )
             else
               const Text('No payments made yet.',
                   style: TextStyle(color: Colors.grey)),
-
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -446,7 +466,6 @@ class _PartyDetailState extends State<PartyDetail> {
               ],
             ),
             const SizedBox(height: 16),
-
             Row(
               children: [
                 TextButton.icon(
@@ -602,7 +621,6 @@ class _PartyDetailState extends State<PartyDetail> {
       child: Container(
         width: 120,
         child: Row(
-          // mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               'Add Advance', // Always show 'Add Advance'
@@ -626,7 +644,6 @@ class _PartyDetailState extends State<PartyDetail> {
     return InkWell(
       onTap: () async {
         try {
-          // Update the trip status in Firestore to "Trip Not Completed"
           await FirebaseFirestore.instance
               .collection('trips')
               .doc(widget
@@ -636,17 +653,12 @@ class _PartyDetailState extends State<PartyDetail> {
                 'Trip Not Completed', // Update the status to "Trip Not Completed"
           });
 
-          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Trip marked as incomplete')),
           );
 
-          // Trigger a refresh of the page by calling setState
-          setState(() {
-            // This will rebuild the widget, reflecting the updated status
-          });
+          setState(() {});
         } catch (e) {
-          // Show error message if something goes wrong
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to update trip status: $e')),
           );
@@ -730,18 +742,15 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   void _calculatePendingBalance() {
-    // Fetch the freight amount from the 'amount' field in the trip data
     final int freightAmount =
         int.tryParse(widget.tripData['amount']?.toString() ?? '0') ?? 0;
     final int advanceAmountInt = int.tryParse(advanceAmount) ?? 0;
 
-    // Sum up all payments from the payments array
     final int totalPayments = paymentAmounts.fold<int>(
       0,
       (sum, payment) => sum + (int.tryParse(payment) ?? 0),
     );
 
-    // Set pending balance to freightAmount if no payments or advance are present
     int calculatedPendingBalance;
     if (advanceAmountInt == 0 && totalPayments == 0) {
       calculatedPendingBalance = freightAmount;
@@ -756,7 +765,6 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   void _showAdvanceDialog() {
-    // Create controllers for the form fields
     TextEditingController advanceController = TextEditingController();
     TextEditingController dateController = TextEditingController();
     bool isReceivedByDriver = false;
@@ -770,11 +778,9 @@ class _PartyDetailState extends State<PartyDetail> {
             return AlertDialog(
               title: const Text('Add Advance'),
               content: SingleChildScrollView(
-                // Allow content to scroll if necessary
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Advance Amount Field (treated as string)
                     TextField(
                       controller: advanceController,
                       decoration: const InputDecoration(
@@ -786,8 +792,6 @@ class _PartyDetailState extends State<PartyDetail> {
                       },
                     ),
                     const SizedBox(height: 10),
-
-                    // Received by Driver Switch
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -803,8 +807,6 @@ class _PartyDetailState extends State<PartyDetail> {
                       ],
                     ),
                     const SizedBox(height: 10),
-
-                    // Payment Method Dropdown
                     DropdownButton<String>(
                       value: selectedPaymentMethod,
                       onChanged: (String? newValue) {
@@ -826,8 +828,6 @@ class _PartyDetailState extends State<PartyDetail> {
                       isExpanded: true,
                     ),
                     const SizedBox(height: 10),
-
-                    // Date Picker Field
                     TextField(
                       controller: dateController,
                       decoration:
@@ -841,7 +841,6 @@ class _PartyDetailState extends State<PartyDetail> {
                           lastDate: DateTime(2101),
                         );
                         if (pickedDate != null) {
-                          // Format the selected date to 'YYYY-MM-DD'
                           String formattedDate =
                               "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
                           setStateDialog(() {
@@ -855,12 +854,10 @@ class _PartyDetailState extends State<PartyDetail> {
                 ),
               ),
               actions: [
-                // Cancel Button
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
-                // Add Advance Button
                 TextButton(
                   onPressed: () {
                     String enteredAmount = advanceController.text.trim();
@@ -869,7 +866,6 @@ class _PartyDetailState extends State<PartyDetail> {
                     print('Entered Amount: $enteredAmount');
                     print('Entered Date: $enteredDate');
 
-                    // Validate for empty fields
                     if (enteredAmount.isEmpty || enteredDate.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -877,7 +873,6 @@ class _PartyDetailState extends State<PartyDetail> {
                                 Text('Please enter a valid amount and date')),
                       );
                     } else {
-                      // Call the _addAdvanceToFirestore function to add the data to Firestore
                       _addAdvanceToFirestore(isReceivedByDriver,
                           selectedPaymentMethod, enteredDate, enteredAmount);
                       Navigator.of(context)
@@ -935,7 +930,6 @@ class _PartyDetailState extends State<PartyDetail> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  // Date Picker field
                   TextField(
                     controller: dateController,
                     decoration: const InputDecoration(labelText: 'Select Date'),
@@ -956,7 +950,6 @@ class _PartyDetailState extends State<PartyDetail> {
                     },
                   ),
                   const SizedBox(height: 10),
-                  // Method of Payment dropdown
                   DropdownButton<String>(
                     value: selectedPaymentMethod,
                     onChanged: (String? newValue) {
@@ -990,7 +983,6 @@ class _PartyDetailState extends State<PartyDetail> {
                     String enteredAmount = paymentController.text.trim();
                     String enteredDate = dateController.text.trim();
 
-                    // Validate fields before calling the add payment function
                     if (enteredAmount.isEmpty || enteredDate.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -998,7 +990,6 @@ class _PartyDetailState extends State<PartyDetail> {
                                 Text('Please enter a valid amount and date')),
                       );
                     } else {
-                      // Call the _addPaymentToFirestore function to add the data to Firestore
                       _addPaymentToFirestore(
                         isReceivedByDriver,
                         selectedPaymentMethod,
@@ -1026,7 +1017,6 @@ class _PartyDetailState extends State<PartyDetail> {
       String enteredAmount) async {
     if (enteredAmount.isNotEmpty) {
       try {
-        // Update the trip with advance amount
         await FirebaseFirestore.instance
             .collection('trips')
             .doc(widget.tripId)
@@ -1041,25 +1031,17 @@ class _PartyDetailState extends State<PartyDetail> {
             }
           ])
         }); // Update only advanceAmount and add to 'advances' array
-
-        // If the switch is on, also update the driverTransactions collection
         if (isReceivedByDriver) {
-          // Fetch the driver name from the trip document
           final tripDoc = await FirebaseFirestore.instance
               .collection('trips')
               .doc(widget.tripId)
               .get();
-
-          // Make sure the driver name exists in the document
           final driverName = tripDoc.exists &&
                   tripDoc.data()?.containsKey('driverName') == true
               ? tripDoc['driverName']
               : 'Unknown Driver'; // Default value in case driverName is missing
-
           final timestamp = FieldValue
               .serverTimestamp(); // Use server timestamp for consistency
-
-          // Add to driverTransactions collection
           await FirebaseFirestore.instance
               .collection('drivertransactions')
               .add({
@@ -1070,30 +1052,22 @@ class _PartyDetailState extends State<PartyDetail> {
             'type': 'got', // The transaction type is "got"
           });
         }
-
-        // Set state to indicate an advance exists
         setState(() {
           _hasAdvance = true; // Update state to indicate an advance exists
         });
-
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: const Text('Advance amount added successfully')),
         );
-
-        // Refresh payment list and pending balance
         await _fetchPaymentAmount();
 
         advanceController.clear();
         Navigator.of(context).pop();
       } catch (error) {
-        // Handle error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to add advance: $error')),
         );
       }
     } else {
-      // Show message if the amount is empty
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
       );
@@ -1107,7 +1081,6 @@ class _PartyDetailState extends State<PartyDetail> {
       String enteredAmount) async {
     if (enteredAmount.isNotEmpty) {
       try {
-        // Update the trip with payment amount
         await FirebaseFirestore.instance
             .collection('trips')
             .doc(widget.tripId)
@@ -1123,15 +1096,12 @@ class _PartyDetailState extends State<PartyDetail> {
           ])
         }); // Update only paymentAmount and add to 'payments' array
 
-        // If the switch is on, also update the driverTransactions collection
         if (isReceivedByDriver) {
-          // Fetch the driver name from the trip document
           final tripDoc = await FirebaseFirestore.instance
               .collection('trips')
               .doc(widget.tripId)
               .get();
 
-          // Make sure the driver name exists in the document
           final driverName = tripDoc.exists &&
                   tripDoc.data()?.containsKey('driverName') == true
               ? tripDoc['driverName']
@@ -1140,7 +1110,6 @@ class _PartyDetailState extends State<PartyDetail> {
           final timestamp = FieldValue
               .serverTimestamp(); // Use server timestamp for consistency
 
-          // Add to driverTransactions collection
           await FirebaseFirestore.instance
               .collection('drivertransactions')
               .add({
@@ -1151,25 +1120,19 @@ class _PartyDetailState extends State<PartyDetail> {
             'type': 'received', // The transaction type is "received"
           });
         }
-
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: const Text('Payment amount added successfully')),
         );
-
-        // Refresh payment list and pending balance
         await _fetchPaymentAmount();
 
         advanceController.clear();
         Navigator.of(context).pop();
       } catch (error) {
-        // Handle error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to add payment: $error')),
         );
       }
     } else {
-      // Show message if the amount is empty
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
       );
@@ -1203,7 +1166,6 @@ class _PartyDetailState extends State<PartyDetail> {
             ),
             TextButton(
               onPressed: () {
-                // Add charge functionality
                 Navigator.of(context).pop();
               },
               child: const Text('Add Charge'),
