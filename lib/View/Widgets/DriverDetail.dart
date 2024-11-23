@@ -59,72 +59,120 @@ class _DriverDetailState extends State<DriverDetail> {
   }
 
   // Add a new transaction to Firestore
-  Future<void> _addTransaction(String transactionType, String description, String amount) async {
-    try {
-      final transactionData = {
-        'driverName': widget.tripData['driverName'],  // Store the driver name
-        'description': description,
-        'amount': amount,
-        'type': transactionType,
-        'fromtrip':'false',
-        'timestamp': FieldValue.serverTimestamp(),
-      };
+  Future<void> _addTransaction(
+    String transactionType, String description, String amount, String date, String paymentMethod) async {
+  try {
+    final transactionData = {
+      'driverName': widget.tripData['driverName'], // Store the driver name
+      'description': description,
+      'amount': amount,
+      'type': transactionType,
+      'date': date, // Add the date field
+      'paymentMethod': paymentMethod, // Add the payment method field
+      'fromtrip': 'false',
+      'timestamp': FieldValue.serverTimestamp(),
+    };
 
-      await FirebaseFirestore.instance.collection('drivertransactions').add(transactionData);
+    await FirebaseFirestore.instance.collection('drivertransactions').add(transactionData);
 
-      setState(() {
-        _transactions.add(transactionData);  // Add transaction to local list
-        _calculateTotals();  // Recalculate totals after adding a new transaction
-      });
-    } catch (e) {
-      print("Error adding transaction: $e");
-    }
+    setState(() {
+      _transactions.add(transactionData); // Add transaction to local list
+      _calculateTotals(); // Recalculate totals after adding a new transaction
+    });
+  } catch (e) {
+    print("Error adding transaction: $e");
   }
+}
+
 
   // Show the dialog for adding a new transaction
   void _showTransactionDialog(String transactionType) {
-    final TextEditingController amountController = TextEditingController();
-    final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController amountController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController dateController = TextEditingController();
+  String? selectedPaymentMethod;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(transactionType == 'got' ? "Driver Got" : "Driver Gave"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(labelText: 'Description'),
-            ),
-            TextField(
-              controller: amountController,
-              decoration: InputDecoration(labelText: 'Amount'),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text("Cancel"),
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(transactionType == 'got' ? "Driver Got" : "Driver Gave"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: descriptionController,
+            decoration: InputDecoration(labelText: 'Description'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (descriptionController.text.isNotEmpty &&
-                  amountController.text.isNotEmpty) {
-                _addTransaction(transactionType, descriptionController.text, amountController.text);
-                Navigator.of(context).pop();
+          TextField(
+            controller: amountController,
+            decoration: InputDecoration(labelText: 'Amount'),
+            keyboardType: TextInputType.number,
+          ),
+          TextField(
+            controller: dateController,
+            decoration: InputDecoration(
+              labelText: 'Date',
+              suffixIcon: Icon(Icons.calendar_today),
+            ),
+            readOnly: true,
+            onTap: () async {
+              DateTime? pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (pickedDate != null) {
+                dateController.text = pickedDate.toLocal().toString().split(' ')[0];
               }
             },
-            child: Text("Submit"),
+          ),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(labelText: 'Payment Method'),
+            items: [
+              DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+              DropdownMenuItem(value: 'UPI', child: Text('UPI')),
+              DropdownMenuItem(value: 'Card', child: Text('Card')),
+              DropdownMenuItem(value: 'Online', child: Text('Online')),
+            ],
+            onChanged: (value) {
+              selectedPaymentMethod = value;
+            },
+            value: selectedPaymentMethod,
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (descriptionController.text.isNotEmpty &&
+                amountController.text.isNotEmpty &&
+                dateController.text.isNotEmpty &&
+                selectedPaymentMethod != null) {
+              _addTransaction(
+                transactionType,
+                descriptionController.text,
+                amountController.text,
+                dateController.text,
+                selectedPaymentMethod!,
+              );
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text("Submit"),
+        ),
+      ],
+    ),
+  );
+}
+
+
 
   // Function to settle transactions for the driver
 Future<void> _settleTransactions(String date, String paymentMethod) async {
