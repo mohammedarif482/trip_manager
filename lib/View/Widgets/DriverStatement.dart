@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 
 class DriverStatementPage extends StatefulWidget {
   final String driverName;
@@ -27,48 +31,149 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
         .get();
 
     List<Map<String, dynamic>> fetchedTransactions = [];
+    double cumulativeGot = 0.0;
+    double cumulativeGave = 0.0;
     double currentBalance = 0.0;
 
     for (var doc in snapshot.docs) {
       var data = doc.data();
 
-      // Get the type and amount as string
       String type = data['type'] ?? '';
       String amountStr = data['amount'] ?? '0';
-
-      // Parse the amount string into a double
       double amount = double.tryParse(amountStr) ?? 0.0;
 
+      String dateStr = data['date'] ?? '';
+      DateTime? date = DateTime.tryParse(dateStr);
+      if (date == null) continue;
+
+      String monthKey = DateFormat('yyyy-MM').format(date);
+
+      // Add the transaction to the list based on type (gave or got)
       if (type == 'gave') {
-        fetchedTransactions.add({
-          'date': data['date'],
-          'description': data['description'],
-          'gave': amount,
-          'got': 0.0,
-        });
-        currentBalance -= amount;
+        cumulativeGave += amount;
       } else if (type == 'got') {
-        fetchedTransactions.add({
-          'date': data['date'],
-          'description': data['description'],
-          'gave': 0.0,
-          'got': amount,
-        });
-        currentBalance += amount;
+        cumulativeGot += amount;
       }
 
-      // Add the balance for the current row
-      fetchedTransactions.last['balance'] = currentBalance;
+      // The balance for this row should reflect cumulative "got" - cumulative "gave" until this row
+      currentBalance = cumulativeGot - cumulativeGave;
+
+      fetchedTransactions.add({
+        'date': DateFormat('yyyy-MM-dd').format(date),
+        'description': data['description'],
+        'gave': type == 'gave' ? amount : 0.0,
+        'got': type == 'got' ? amount : 0.0,
+        'balance': currentBalance,
+        'month': monthKey,
+        'dateTime': date,
+      });
+    }
+
+    // Sorting by month and then by date
+    fetchedTransactions.sort((a, b) {
+      int monthComparison = a['month'].compareTo(b['month']);
+      if (monthComparison != 0) return monthComparison;
+      return a['dateTime'].compareTo(b['dateTime']);
+    });
+
+    List<Map<String, dynamic>> finalTransactions = [];
+    String? lastMonth = null;
+
+    // Add a row for monthly balance
+    for (var transaction in fetchedTransactions) {
+      String monthKey = transaction['month'];
+
+      if (lastMonth != null && lastMonth != monthKey) {
+        // Add a monthly balance row at the end of the month
+        finalTransactions.add({
+          'date': '',
+          'description': 'Monthly Balance ($lastMonth)',
+          'gave': null,
+          'got': null,
+          'balance': transaction['balance'],
+          'isMonthlyBalance': true,
+        });
+      }
+
+      finalTransactions.add(transaction);
+      lastMonth = monthKey;
+    }
+
+    // Add the final monthly balance row for the last month
+    if (lastMonth != null) {
+      finalTransactions.add({
+        'date': '',
+        'description': 'Monthly Balance ($lastMonth)',
+        'gave': null,
+        'got': null,
+        'balance': finalTransactions.last['balance'],
+        'isMonthlyBalance': true,
+      });
     }
 
     setState(() {
-      transactions = fetchedTransactions;
+      transactions = finalTransactions;
       balance = currentBalance;
     });
   }
 
+  Future<void> _downloadPDF() async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Text('Driver Transactions: ${widget.driverName}', style: pw.TextStyle(fontSize: 24)),
+              pw.SizedBox(height: 20),
+              pw.Text('Current Balance: ₹${balance.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 18)),
+              pw.SizedBox(height: 20),
+              pw.Table(
+                border: pw.TableBorder.all(),
+                children: [
+                  pw.TableRow(children: [
+                    pw.Text('Date', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Reason', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Driver Gave (-)', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Driver Got (+)', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Balance', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  ]),
+                  ...transactions.map((transaction) {
+                    bool isMonthlyBalance = transaction['isMonthlyBalance'] ?? false;
+                    return pw.TableRow(
+                      decoration: isMonthlyBalance
+                          ? pw.BoxDecoration(color: PdfColor.fromInt(0xFFFFF9C4)) // Light yellow color
+                          : null,
+                      children: [
+                        pw.Text(transaction['date'] ?? ''),
+                        pw.Text(transaction['description'] ?? ''),
+                        pw.Text(transaction['gave']?.toString() ?? ''),
+                        pw.Text(transaction['got']?.toString() ?? ''),
+                        pw.Text(transaction['balance']?.toString() ?? ''),
+                      ],
+                    );
+                  }).toList(),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+      name: 'Driver_statement.pdf', // File name set here
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double headerFontSize = screenWidth < 400 ? 9.0 : 10.0; // Further reduced header font size
+    double rowFontSize = headerFontSize - 2.0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Driver Transactions"),
@@ -77,9 +182,9 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            // Card for displaying driver's name and icon
+            // Current balance display just above the table
             Card(
-              elevation: 5, // Slight shadow for card
+              elevation: 5,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.0),
               ),
@@ -89,15 +194,15 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
                 child: Row(
                   children: [
                     Icon(
-                      Icons.person, // Icon for the driver (person icon)
+                      Icons.person,
                       color: Colors.blue,
                       size: 40.0,
                     ),
                     SizedBox(width: 12.0),
                     Text(
-                      widget.driverName, // Display the driver's name
+                      widget.driverName,
                       style: TextStyle(
-                        fontSize: 14.0, // Slightly larger font for name
+                        fontSize: 16.0,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -105,175 +210,82 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
                 ),
               ),
             ),
-
-            // Table with dynamic width adjustments based on screen size
-            LayoutBuilder(
-              builder: (context, constraints) {
-                double availableWidth = constraints.maxWidth;
-
-                // Adjust column width more accurately
-                double columnWidth = availableWidth * 0.12; // Slightly smaller width
-                double largerColumnWidth = availableWidth * 0.18; // Adjust for "Driver Gave" and "Driver Got"
-
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal, // Allow horizontal scrolling if needed
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12.0),
-                      color: Colors.white, // Set background to white for the table
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: DataTable(
-                        columnSpacing: 0.0, // Remove spacing between columns
-                        decoration: BoxDecoration(
-                          color: Colors.green, // Green background for the entire header row
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        columns: [
-                          DataColumn(
-                            label: Container(
-                              width: columnWidth,
-                              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
-                              alignment: Alignment.centerLeft, // Align text to the left
-                              child: Text(
-                                'Date',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10.0, // Adjusted font size for header
-                                ),
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Container(
-                              width: columnWidth,
-                              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
-                              alignment: Alignment.centerLeft, // Align text to the left
-                              child: Text(
-                                'Reason',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10.0, // Adjusted font size for header
-                                ),
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Container(
-                              width: largerColumnWidth,
-                              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
-                              alignment: Alignment.centerLeft, // Align text to the left
-                              child: Text(
-                                'Driver Gave (-)',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10.0, // Adjusted font size for header
-                                ),
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Container(
-                              width: largerColumnWidth,
-                              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
-                              alignment: Alignment.centerLeft, // Align text to the left
-                              child: Text(
-                                'Driver Got (+)',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10.0, // Adjusted font size for header
-                                ),
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Container(
-                              width: columnWidth,
-                              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
-                              alignment: Alignment.centerLeft, // Align text to the left
-                              child: Text(
-                                'Balance',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10.0, // Adjusted font size for header
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        rows: List.generate(transactions.length, (index) {
-                          var transaction = transactions[index];
-
-                          // Alternating row colors between white and light grey
-                          Color rowColor = index % 2 == 0 ? Colors.white : Colors.grey[200]!;
-
-                          return DataRow(
-                            color: MaterialStateProperty.all(rowColor),
-                            cells: [
-                              DataCell(Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  transaction['date'] ?? '',
-                                  style: TextStyle(fontSize: 9.0),
-                                  overflow: TextOverflow.ellipsis, // Add ellipsis if text overflows
-                                ),
-                              )),
-                              DataCell(Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  transaction['description'] ?? '',
-                                  style: TextStyle(fontSize: 9.0),
-                                  overflow: TextOverflow.ellipsis, // Add ellipsis if text overflows
-                                ),
-                              )),
-                              DataCell(Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  transaction['gave'].toString(),
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 9.0,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              )),
-                              DataCell(Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  transaction['got'].toString(),
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontSize: 9.0,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              )),
-                              DataCell(Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  transaction['balance'].toStringAsFixed(2),
-                                  style: TextStyle(fontSize: 9.0),
-                                ),
-                              )),
-                            ],
-                          );
-                        }),
+            // Current balance display
+            Card(
+              elevation: 5,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              margin: EdgeInsets.only(bottom: 20.0),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Current Balance: ',
+                      style: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black, // Black color for text
                       ),
                     ),
-                  ),
-                );
-              },
+                    Text(
+                      'Rs ${balance.toStringAsFixed(2)}', // Using rupees symbol
+                      style: TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green, // Green color for amount
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            SizedBox(height: 20),
-            Text(
-              'Current Balance: \$${balance.toStringAsFixed(2)}',
-              style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Card(
+                  elevation: 5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: DataTable(
+                    columnSpacing: 12.0,
+                    dataRowHeight: 50.0,
+                    headingRowHeight: 60.0,
+                    headingTextStyle: TextStyle(fontSize: headerFontSize),
+                    dataTextStyle: TextStyle(fontSize: rowFontSize),
+                    columns: [
+                      DataColumn(label: Text('Date', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Description', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Gave (-)', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Got (+)', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Balance', style: TextStyle(fontSize: rowFontSize))),
+                    ],
+                    rows: transactions.map((transaction) {
+                      bool isMonthlyBalance = transaction['isMonthlyBalance'] ?? false;
+                      return DataRow(
+                        color: isMonthlyBalance
+                            ? MaterialStateProperty.all(Colors.yellow.shade100) // Light yellow for monthly balance
+                            : null,
+                        cells: [
+                          DataCell(Text(transaction['date'] ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['description'] ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['gave']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['got']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['balance']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10.0),
+              child: ElevatedButton(
+                onPressed: _downloadPDF,
+                child: Text('Download PDF'),
+              ),
             ),
           ],
         ),
