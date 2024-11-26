@@ -31,10 +31,10 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
         .get();
 
     List<Map<String, dynamic>> fetchedTransactions = [];
-    double cumulativeGot = 0.0;
-    double cumulativeGave = 0.0;
     double currentBalance = 0.0;
+    String? lastMonth = null;
 
+    // Extract data and sort by date
     for (var doc in snapshot.docs) {
       var data = doc.data();
 
@@ -48,28 +48,17 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
 
       String monthKey = DateFormat('yyyy-MM').format(date);
 
-      // Add the transaction to the list based on type (gave or got)
-      if (type == 'gave') {
-        cumulativeGave += amount;
-      } else if (type == 'got') {
-        cumulativeGot += amount;
-      }
-
-      // The balance for this row should reflect cumulative "got" - cumulative "gave" until this row
-      currentBalance = cumulativeGot - cumulativeGave;
-
       fetchedTransactions.add({
         'date': DateFormat('yyyy-MM-dd').format(date),
         'description': data['description'],
         'gave': type == 'gave' ? amount : 0.0,
         'got': type == 'got' ? amount : 0.0,
-        'balance': currentBalance,
         'month': monthKey,
         'dateTime': date,
       });
     }
 
-    // Sorting by month and then by date
+    // Sort by month and then by date
     fetchedTransactions.sort((a, b) {
       int monthComparison = a['month'].compareTo(b['month']);
       if (monthComparison != 0) return monthComparison;
@@ -77,25 +66,42 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
     });
 
     List<Map<String, dynamic>> finalTransactions = [];
-    String? lastMonth = null;
+    double monthlyBalance = 0.0;
 
-    // Add a row for monthly balance
+    // Process transactions row by row
     for (var transaction in fetchedTransactions) {
       String monthKey = transaction['month'];
 
+      // Check if a new month has started
       if (lastMonth != null && lastMonth != monthKey) {
-        // Add a monthly balance row at the end of the month
+        // Add a monthly balance row for the previous month
         finalTransactions.add({
           'date': '',
           'description': 'Monthly Balance ($lastMonth)',
           'gave': null,
           'got': null,
-          'balance': transaction['balance'],
+          'balance': monthlyBalance,
           'isMonthlyBalance': true,
         });
       }
 
-      finalTransactions.add(transaction);
+      // Update balance based on "gave" and "got"
+      double gave = transaction['gave'] ?? 0.0;
+      double got = transaction['got'] ?? 0.0;
+
+      currentBalance = currentBalance - gave + got;
+      monthlyBalance = currentBalance;
+
+      // Add the transaction to the final list
+      finalTransactions.add({
+        'date': transaction['date'],
+        'description': transaction['description'],
+        'gave': gave,
+        'got': got,
+        'balance': currentBalance,
+        'isMonthlyBalance': false,
+      });
+
       lastMonth = monthKey;
     }
 
@@ -106,16 +112,17 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
         'description': 'Monthly Balance ($lastMonth)',
         'gave': null,
         'got': null,
-        'balance': finalTransactions.last['balance'],
+        'balance': monthlyBalance,
         'isMonthlyBalance': true,
       });
     }
 
     setState(() {
       transactions = finalTransactions;
-      balance = currentBalance;
+      balance = currentBalance; // Final cumulative balance
     });
   }
+
 
   Future<void> _downloadPDF() async {
     final pdf = pw.Document();
@@ -250,16 +257,24 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
                   ),
                   child: DataTable(
                     columnSpacing: 12.0,
-                    dataRowHeight: 50.0,
-                    headingRowHeight: 60.0,
-                    headingTextStyle: TextStyle(fontSize: headerFontSize),
-                    dataTextStyle: TextStyle(fontSize: rowFontSize),
+                    dataRowHeight: 60.0, // Adjusted row height for larger font
+                    headingRowHeight: 70.0, // Adjusted header row height
+                    headingRowColor: MaterialStateProperty.all(Colors.red), // Set header row color to red
+                    headingTextStyle: TextStyle(
+                      fontSize: 16.0, // Increased header font size
+                      color: Colors.white, // White text for contrast
+                      fontWeight: FontWeight.bold,
+                    ),
+                    dataTextStyle: TextStyle(
+                      fontSize: 14.0, // Increased row font size
+                      color: Colors.black, // Default row text color
+                    ),
                     columns: [
-                      DataColumn(label: Text('Date', style: TextStyle(fontSize: rowFontSize))),
-                      DataColumn(label: Text('Description', style: TextStyle(fontSize: rowFontSize))),
-                      DataColumn(label: Text('Gave (-)', style: TextStyle(fontSize: rowFontSize))),
-                      DataColumn(label: Text('Got (+)', style: TextStyle(fontSize: rowFontSize))),
-                      DataColumn(label: Text('Balance', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Date', style: TextStyle(fontSize: 16.0))), // Adjusted font size
+                      DataColumn(label: Text('Description', style: TextStyle(fontSize: 16.0))),
+                      DataColumn(label: Text('Gave (-)', style: TextStyle(fontSize: 16.0))),
+                      DataColumn(label: Text('Got (+)', style: TextStyle(fontSize: 16.0))),
+                      DataColumn(label: Text('Balance', style: TextStyle(fontSize: 16.0))),
                     ],
                     rows: transactions.map((transaction) {
                       bool isMonthlyBalance = transaction['isMonthlyBalance'] ?? false;
@@ -268,11 +283,11 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
                             ? MaterialStateProperty.all(Colors.yellow.shade100) // Light yellow for monthly balance
                             : null,
                         cells: [
-                          DataCell(Text(transaction['date'] ?? '', style: TextStyle(fontSize: rowFontSize))),
-                          DataCell(Text(transaction['description'] ?? '', style: TextStyle(fontSize: rowFontSize))),
-                          DataCell(Text(transaction['gave']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
-                          DataCell(Text(transaction['got']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
-                          DataCell(Text(transaction['balance']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['date'] ?? '', style: TextStyle(fontSize: 14.0))),
+                          DataCell(Text(transaction['description'] ?? '', style: TextStyle(fontSize: 14.0))),
+                          DataCell(Text(transaction['gave']?.toString() ?? '', style: TextStyle(fontSize: 14.0))),
+                          DataCell(Text(transaction['got']?.toString() ?? '', style: TextStyle(fontSize: 14.0))),
+                          DataCell(Text(transaction['balance']?.toString() ?? '', style: TextStyle(fontSize: 14.0))),
                         ],
                       );
                     }).toList(),
@@ -280,6 +295,7 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
                 ),
               ),
             ),
+
             Padding(
               padding: const EdgeInsets.only(bottom: 10.0),
               child: ElevatedButton(
@@ -293,3 +309,4 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
     );
   }
 }
+
