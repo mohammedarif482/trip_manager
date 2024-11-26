@@ -33,6 +33,7 @@ class _TruckScreenState extends State<TruckScreen> {
 
     return snapshot.docs.map((doc) {
       return {
+        "id": doc.id, // Add document ID
         "capacity": doc['capacity'],
         "length": doc['length'],
         "model": doc['model'],
@@ -42,11 +43,52 @@ class _TruckScreenState extends State<TruckScreen> {
     }).toList();
   }
 
-  // Function to refresh the vehicle list
   Future<void> _loadVehicles() async {
     setState(() {
       _vehiclesData = _fetchVehicles(); // Reload vehicles
     });
+  }
+
+  Future<void> _deleteVehicle(String documentId) async {
+    try {
+      bool? confirmDelete = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Confirm Deletion'),
+            content:
+                const Text('Are you sure you want to delete this vehicle?'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              TextButton(
+                child:
+                    const Text('Delete', style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmDelete == true) {
+        await FirebaseFirestore.instance
+            .collection('vehicles')
+            .doc(documentId)
+            .delete();
+
+        await _loadVehicles();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vehicle successfully deleted')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting vehicle: $e')),
+      );
+    }
   }
 
   void _showAddVehicle() {
@@ -131,22 +173,17 @@ class _TruckScreenState extends State<TruckScreen> {
                           'width': widthController.text,
                         };
 
-                        // Add to Firestore (if needed)
                         await FirebaseFirestore.instance
                             .collection('vehicles')
                             .add(newVehicle);
 
-                        // Add to local list for display
-                        setState(() {
-                          vehicles.add(newVehicle);
-                        });
-
-                        // Clear inputs
                         regNumberController.clear();
                         vehicleNameController.clear();
                         capacityController.clear();
                         lenghtController.clear();
                         widthController.clear();
+
+                        await _loadVehicles();
 
                         Navigator.pop(context);
                       },
@@ -213,7 +250,7 @@ class _TruckScreenState extends State<TruckScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      vehicles[index]['registration']!,
+                                      vehicle['registration']!,
                                       style: TextStyle(
                                         color: Colors.red,
                                         fontWeight: FontWeight.bold,
@@ -225,7 +262,7 @@ class _TruckScreenState extends State<TruckScreen> {
                                 ),
                                 SizedBox(height: 5),
                                 Text(
-                                  vehicles[index]['model']!,
+                                  vehicle['model']!,
                                   style: TextStyle(
                                     color: Colors.grey,
                                     fontSize: 14,
@@ -237,7 +274,7 @@ class _TruckScreenState extends State<TruckScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text('Length'),
-                                    Text(vehicles[index]['length']!),
+                                    Text(vehicle['length']!),
                                   ],
                                 ),
                                 Row(
@@ -245,7 +282,7 @@ class _TruckScreenState extends State<TruckScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text('Width'),
-                                    Text(vehicles[index]['width']!),
+                                    Text(vehicle['width']!),
                                   ],
                                 ),
                                 Row(
@@ -253,7 +290,7 @@ class _TruckScreenState extends State<TruckScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text('Capacity'),
-                                    Text(vehicles[index]['capacity']!),
+                                    Text(vehicle['capacity']!),
                                   ],
                                 ),
                                 SizedBox(height: 10),
@@ -261,15 +298,14 @@ class _TruckScreenState extends State<TruckScreen> {
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     ElevatedButton(
-                                      onPressed: () {},
-                                      child: Text('Edit'),
-                                    ),
-                                    SizedBox(width: 10),
-                                    ElevatedButton(
-                                      onPressed: () {},
-                                      child: Text('Delete'),
+                                      onPressed: () =>
+                                          _deleteVehicle(vehicle['id']!),
+                                      child: Text(
+                                        'Delete',
+                                        style: TextStyle(color: Colors.black),
+                                      ),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.grey,
+                                        backgroundColor: Colors.white60,
                                       ),
                                     ),
                                   ],
@@ -285,9 +321,6 @@ class _TruckScreenState extends State<TruckScreen> {
               },
             ),
           ),
-          // SizedBox(
-          //   height: 70,
-          // )
         ],
       ),
     );
