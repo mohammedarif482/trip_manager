@@ -59,25 +59,29 @@ class _TripsScreenState extends State<TripsScreen> {
 
       Query query = FirebaseFirestore.instance.collection('trips');
 
-      // Filter trips based on driver or all
       if (isDriver) {
         query = query.where('driverName', isEqualTo: userName);
       }
 
       final QuerySnapshot snapshot = await query.get();
 
-      // Map the results into a list
       final trips = snapshot.docs.map((doc) {
+        final Map<String, dynamic> tripData =
+            doc.data() as Map<String, dynamic>;
+
         return {
           "tripId": doc.id,
-          "partyName": doc['partyName'],
-          "driverName": doc['driverName'],
-          "vehicleNumber": doc['vehicleNumber'],
-          "fromLocation": doc['fromLocation'],
-          "toLocation": doc['toLocation'],
-          "date": doc['date'],
-          "status": doc['status'],
-          "amount": doc['amount'],
+          "partyName": tripData['partyName'],
+          "driverName": tripData['driverName'],
+          "vehicleNumber": tripData['vehicleNumber'],
+          "fromLocation": tripData['fromLocation'],
+          "toLocation": tripData['toLocation'],
+          "date": tripData['date'],
+          "status": tripData['status'],
+          "amount": tripData['amount'],
+          "endDate": tripData['endDate'] != null
+              ? (tripData['endDate'] as Timestamp).toDate()
+              : null,
         };
       }).toList();
 
@@ -94,46 +98,75 @@ class _TripsScreenState extends State<TripsScreen> {
     }
   }
 
+  // Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
+  //   final String? userId = FirebaseAuth.instance.currentUser?.uid;
+  //   if (userId == null) {
+  //     throw Exception("User not logged in");
+  //   }
+  //   final DocumentSnapshot userSnapshot =
+  //       await FirebaseFirestore.instance.collection('users').doc(userId).get();
+  //   final Map<String, dynamic>? userData =
+  //       userSnapshot.data() as Map<String, dynamic>?;
+  //   if (userData == null) {
+  //     throw Exception("User data not found");
+  //   }
+  //   final String userName = userData['name'] ?? '';
+  //   final bool isDriver = userData['isDriver'] ?? false;
+  //   Query query = FirebaseFirestore.instance.collection('trips');
+  //   if (isDriver) {
+  //     query = query.where('driverName', isEqualTo: userName);
+  //   }
+  //   query = query.where('status', isEqualTo: 'Trip Completed');
+  //   final QuerySnapshot snapshot = await query.get();
+  //   return snapshot.docs.map((doc) {
+  //     return {
+  //       "tripId": doc.id,
+  //       "partyName": doc['partyName'],
+  //       "driverName": doc['driverName'],
+  //       "vehicleNumber": doc['vehicleNumber'],
+  //       "fromLocation": doc['fromLocation'],
+  //       "toLocation": doc['toLocation'],
+  //       "date": doc['date'],
+  //       "status": doc['status'],
+  //       "amount": doc['amount'],
+  //     };
+  //   }).toList();
+  // }
   Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
     final String? userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) {
       throw Exception("User not logged in");
     }
-
     final DocumentSnapshot userSnapshot =
         await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
     final Map<String, dynamic>? userData =
         userSnapshot.data() as Map<String, dynamic>?;
-
     if (userData == null) {
       throw Exception("User data not found");
     }
-
     final String userName = userData['name'] ?? '';
     final bool isDriver = userData['isDriver'] ?? false;
-
     Query query = FirebaseFirestore.instance.collection('trips');
-
     if (isDriver) {
       query = query.where('driverName', isEqualTo: userName);
     }
-
     query = query.where('status', isEqualTo: 'Trip Completed');
-
     final QuerySnapshot snapshot = await query.get();
-
     return snapshot.docs.map((doc) {
+      final Map<String, dynamic> tripData = doc.data() as Map<String, dynamic>;
       return {
         "tripId": doc.id,
-        "partyName": doc['partyName'],
-        "driverName": doc['driverName'],
-        "vehicleNumber": doc['vehicleNumber'],
-        "fromLocation": doc['fromLocation'],
-        "toLocation": doc['toLocation'],
-        "date": doc['date'],
-        "status": doc['status'],
-        "amount": doc['amount'],
+        "partyName": tripData['partyName'],
+        "driverName": tripData['driverName'],
+        "vehicleNumber": tripData['vehicleNumber'],
+        "fromLocation": tripData['fromLocation'],
+        "toLocation": tripData['toLocation'],
+        "date": tripData['date'],
+        "status": tripData['status'],
+        "amount": tripData['amount'],
+        "endDate": tripData['endDate'] != null
+            ? (tripData['endDate'] as Timestamp).toDate()
+            : null, 
       };
     }).toList();
   }
@@ -189,21 +222,19 @@ class _TripsScreenState extends State<TripsScreen> {
     setState(() {
       drivers = snapshot.docs.map((doc) {
         return {
-          "name": doc['name'], // Get the driver's name from the document
+          "name": doc['name'], 
         };
       }).toList();
     });
   }
 
   void _addNewTrip() async {
-    // Check if any field is empty or null
     if (selected_Driver == null ||
         selectedVehicleNumber == null ||
         selectedPartyName == null ||
         fromLocationController.text.isEmpty ||
         toLocationController.text.isEmpty ||
         amountController.text.isEmpty) {
-      // Show a dialog if any field is empty
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -263,14 +294,13 @@ class _TripsScreenState extends State<TripsScreen> {
       selected_Driver = null;
       selectedVehicleNumber = null;
 
-      Navigator.pop(context); // Close the modal
-
+      Navigator.pop(context); 
       showDialog(
         context: context,
         builder: (BuildContext context) {
           Future.delayed(Duration(seconds: 2), () {
             Navigator.of(context)
-                .pop(true); // Close the success dialog after 2 seconds
+                .pop(true); 
           });
           return AlertDialog(
             content: Text('Trip successfully added!'),
@@ -294,7 +324,6 @@ class _TripsScreenState extends State<TripsScreen> {
     }
   }
 
-  // Method to filter trips based on search query
   List<Map<String, dynamic>> _filterTrips(List<Map<String, dynamic>> trips) {
     final searchQuery = searchController.text.toLowerCase();
     return trips.where((trip) {
@@ -314,7 +343,6 @@ class _TripsScreenState extends State<TripsScreen> {
     _tripsCompletedData = _fetchCompletedTrips();
   }
 
-  // Other existing methods remain the same...
 
   @override
   Widget build(BuildContext context) {
@@ -454,12 +482,12 @@ class _TripsScreenState extends State<TripsScreen> {
     toLocationController.clear();
     amountController.clear();
     selected_Driver = null;
-    selectedPartyName = null; // To store the selected party name
-    selectedDate = DateTime.now(); // Reset to the current date if needed
+    selectedPartyName = null; 
+    selectedDate = DateTime.now(); 
 
     List<String> vehicleNumbers = [];
     List<String> partyNames = [];
-    bool isDriver = false; // To store if the current user is a driver
+    bool isDriver = false; 
 
     try {
       String userId = FirebaseAuth.instance.currentUser?.uid ?? '';

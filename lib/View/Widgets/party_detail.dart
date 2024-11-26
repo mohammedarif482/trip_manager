@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:tripmanager/Utils/constants.dart';
 
 class PartyDetail extends StatefulWidget {
@@ -57,6 +58,21 @@ class _PartyDetailState extends State<PartyDetail> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching payments: $error')),
       );
+    }
+  }
+
+  Future<void> addEndDateToTrip() async {
+    try {
+      DocumentReference tripDoc =
+          FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
+
+      await tripDoc.update({
+        'endDate': DateTime.now(),
+      });
+
+      print("End date added successfully");
+    } catch (e) {
+      print("Failed to add end date: $e");
     }
   }
 
@@ -253,9 +269,8 @@ class _PartyDetailState extends State<PartyDetail> {
       children: [
         Expanded(
           child: OutlinedButton(
-            // onPressed: _isTripCompleted ? null : _showConfirmationDialog,
             onPressed: () {
-              if (_currentStep > 3) {
+              if (_currentStep < 3) {
                 _showConfirmationDialog();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -298,15 +313,14 @@ class _PartyDetailState extends State<PartyDetail> {
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
-          .update({'status': status}); // Update status to "Trip Completed"
-
-      setState(() {
-        // _isTripCompleted = true; // Update state to reflect trip is completed
-      });
+          .update({'status': status});
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Trip marked as $status')),
       );
+      if (status == "Trip Completed") {
+        addEndDateToTrip();
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error completing trip: $e')),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/trip_view_screen.dart';
 
@@ -111,6 +112,15 @@ class TripCard extends StatelessWidget {
                   children: [
                     Text(
                       trip['date'],
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      trip['endDate'] != null
+                          ? DateFormat('dd MMM yyyy').format(trip['endDate'])
+                          : "Not Completed",
                       style: TextStyle(
                         color: Colors.grey,
                         fontSize: 14,
