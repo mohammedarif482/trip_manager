@@ -15,14 +15,13 @@ class PartyDetail extends StatefulWidget {
 
 int activeStep = 1;
 final TextEditingController advanceController = TextEditingController();
-String advanceAmount = "0"; // Variable to hold the advance amount
+String advanceAmount = "0";
 
 class _PartyDetailState extends State<PartyDetail> {
   bool _hasAdvance = false;
   String advanceAmount = '0';
   String paymentAmount = '0';
-  List<String> paymentAmounts =
-      []; // Initialize an empty list for payment amounts
+  List<String> paymentAmounts = [];
   List<String> paymentList = [];
   String pendingBalance = '0';
 
@@ -51,7 +50,7 @@ class _PartyDetailState extends State<PartyDetail> {
         });
       } else {
         setState(() {
-          paymentAmounts = []; // Reset payment list if no data
+          paymentAmounts = [];
         });
       }
     } catch (error) {
@@ -65,20 +64,19 @@ class _PartyDetailState extends State<PartyDetail> {
     try {
       DocumentSnapshot doc = await FirebaseFirestore.instance
           .collection('trips')
-          .doc(widget.tripId) // Fetch the document for the specific trip
+          .doc(widget.tripId)
           .get();
 
       if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?; // Use a nullable Map
+        final data = doc.data() as Map<String, dynamic>?;
 
         if (data != null && data.containsKey('advanceAmount')) {
           setState(() {
-            advanceAmount = data['advanceAmount']?.toString() ??
-                "0"; // Update advanceAmount with the value from Firestore
+            advanceAmount = data['advanceAmount']?.toString() ?? "0";
           });
         } else {
           setState(() {
-            advanceAmount = "0"; // or whatever default value you prefer
+            advanceAmount = "0";
           });
         }
       }
@@ -92,15 +90,11 @@ class _PartyDetailState extends State<PartyDetail> {
   int _currentStep = 0;
 
   void _nextStep() {
-    if (_currentStep < 2) {
+    if (_currentStep < 3) {
       setState(() {
-        _currentStep++; // Advance to the next step
+        _currentStep++;
       });
-    } else {
-      setState(() {
-        _currentStep = 0; // Reset to the first step after the last step
-      });
-    }
+    } else {}
   }
 
   void _showConfirmationDialog() async {
@@ -115,7 +109,13 @@ class _PartyDetailState extends State<PartyDetail> {
             child: Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true), // Confirm
+            onPressed: () {
+              if (_currentStep < 3) {
+                print(stepLabels[_currentStep]);
+                _changeTripStatus(stepLabels[_currentStep + 1]);
+              } else {}
+              Navigator.pop(context, true);
+            }, // Confirm
             child: Text('Yes'),
           ),
         ],
@@ -127,7 +127,12 @@ class _PartyDetailState extends State<PartyDetail> {
     }
   }
 
-  final stepLabels = ['Trip Received', 'On the Way ', 'Delivered'];
+  final stepLabels = [
+    'Trip Received',
+    'On the Way',
+    'Delivered',
+    'Trip Completed'
+  ];
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -140,14 +145,14 @@ class _PartyDetailState extends State<PartyDetail> {
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(3, (index) {
+            children: List.generate(4, (index) {
               return Row(
                 children: [
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       CircleAvatar(
-                        radius: 14,
+                        radius: 12,
                         backgroundColor: _currentStep >= index
                             ? AppColors.primaryColor
                             : Colors.grey.shade300,
@@ -171,11 +176,11 @@ class _PartyDetailState extends State<PartyDetail> {
                       ),
                     ],
                   ),
-                  if (index != 2)
+                  if (index != 3)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 26),
                       child: Container(
-                        width: 70,
+                        width: 22,
                         height: 2,
                         color: _currentStep > index
                             ? AppColors.primaryColor
@@ -236,24 +241,36 @@ class _PartyDetailState extends State<PartyDetail> {
     );
   }
 
-  bool _isTripCompleted = false;
-
+  bool tripStatus = false;
+  final buttonLabels = [
+    'Trip Received',
+    'Trip Started',
+    'Delivered',
+    'Complete Trip'
+  ];
   Widget _buildActionButtons() {
     return Row(
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: _isTripCompleted
-                ? null
-                : _showConfirmationDialog, // Disable if trip is completed
+            // onPressed: _isTripCompleted ? null : _showConfirmationDialog,
+            onPressed: () {
+              if (_currentStep > 3) {
+                _showConfirmationDialog();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Trip already Completed')),
+                );
+              }
+            },
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.secondaryColor),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             child: Text(
-              _isTripCompleted
-                  ? 'Completed'
-                  : 'Complete Trip', // Change text based on trip status
+              _currentStep == 3
+                  ? "Trip Completed"
+                  : buttonLabels[_currentStep + 1],
               style: TextStyle(color: AppColors.secondaryColor),
             ),
           ),
@@ -276,21 +293,19 @@ class _PartyDetailState extends State<PartyDetail> {
     );
   }
 
-  Future<void> _completeTrip() async {
+  Future<void> _changeTripStatus(String status) async {
     try {
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
-          .update({
-        'status': 'Trip Completed'
-      }); // Update status to "Trip Completed"
+          .update({'status': status}); // Update status to "Trip Completed"
 
       setState(() {
-        _isTripCompleted = true; // Update state to reflect trip is completed
+        // _isTripCompleted = true; // Update state to reflect trip is completed
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Trip marked as completed')),
+        SnackBar(content: Text('Trip marked as $status')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -308,9 +323,16 @@ class _PartyDetailState extends State<PartyDetail> {
 
       if (tripDoc.exists) {
         var data = tripDoc.data() as Map<String, dynamic>;
+        //  stepLabels
+        print(data['status']);
+        for (var i = 0; i < stepLabels.length; i++) {
+          if (data['status'] == stepLabels[i]) {
+            _currentStep = i;
+          } else {}
+        }
         setState(() {
-          _isTripCompleted = data['status'] ==
-              'Trip Completed'; // Check if trip status is 'Trip Completed'
+          // _isTripCompleted = data['status'] ==
+          // 'Trip Completed'; // Check if trip status is 'Trip Completed'
         });
       }
     } catch (error) {
@@ -321,201 +343,205 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   Widget _buildFinancialDetails() {
-  final List<Map<String, dynamic>> advanceData =
-      List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
-  final List<Map<String, dynamic>> paymentData =
-      List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
+    final List<Map<String, dynamic>> advanceData =
+        List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
+    final List<Map<String, dynamic>> paymentData =
+        List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
 
-  return Container(
-    decoration: BoxDecoration(
-      border: Border.all(color: Colors.grey.shade300),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildAmountRow(
-              'Freight Amount', '₹ ${widget.tripData['amount']}', true),
-          const SizedBox(height: 4),
-          if (advanceData.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Advances:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: _showAdvanceDialog, // Function to add advances
-                      tooltip: 'Add Advance',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: Colors.grey.shade100,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: advanceData.map((advance) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('₹ ${advance['amount']}',
-                                style: TextStyle(fontSize: 16)),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('${advance['date']}',
-                                    style: TextStyle(color: Colors.grey)),
-                                Text('${advance['paymentMethod']}',
-                                    style: TextStyle(color: Colors.grey)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('No advances added yet.',
-                    style: TextStyle(color: Colors.grey)),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _showAdvanceDialog,
-                  tooltip: 'Add Advance',
-                ),
-              ],
-            ),
-          const SizedBox(height: 8),
-          const Divider(height: 32),
-          const SizedBox(height: 16),
-          if (paymentData.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Payments:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: _showPaymentDialog, // Function to add payments
-                      tooltip: 'Add Payment',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: Colors.grey.shade100,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: paymentData.map((payment) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('₹ ${payment['amount']}',
-                                style: TextStyle(fontSize: 16)),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('${payment['date']}',
-                                    style: TextStyle(color: Colors.grey)),
-                                Text('${payment['paymentMethod']}',
-                                    style: TextStyle(color: Colors.grey)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('No payments made yet.',
-                    style: TextStyle(color: Colors.grey)),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _showPaymentDialog,
-                  tooltip: 'Add Payment',
-                ),
-              ],
-            ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Pending Balance',
-                style:
-                    TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              Text(
-                '₹ $pendingBalance',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: _showAddChargesDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Note'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryColor,
-                ),
-              ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.primaryColor),
-                ),
-                child: const Text('Request Money'),
-              ),
-            ],
-          ),
-        ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
       ),
-    ),
-  );
-}
-
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAmountRow(
+                'Freight Amount', '₹ ${widget.tripData['amount']}', true),
+            const SizedBox(height: 4),
+            if (advanceData.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Advances:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed:
+                            _showAdvanceDialog, // Function to add advances
+                        tooltip: 'Add Advance',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.grey.shade100,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: advanceData.map((advance) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('₹ ${advance['amount']}',
+                                  style: TextStyle(fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('${advance['date']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                  Text('${advance['paymentMethod']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('No advances added yet.',
+                      style: TextStyle(color: Colors.grey)),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _showAdvanceDialog,
+                    tooltip: 'Add Advance',
+                  ),
+                ],
+              ),
+            const SizedBox(height: 8),
+            const Divider(height: 32),
+            const SizedBox(height: 16),
+            if (paymentData.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Payments:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed:
+                            _showPaymentDialog, // Function to add payments
+                        tooltip: 'Add Payment',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.grey.shade100,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: paymentData.map((payment) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('₹ ${payment['amount']}',
+                                  style: TextStyle(fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('${payment['date']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                  Text('${payment['paymentMethod']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('No payments made yet.',
+                      style: TextStyle(color: Colors.grey)),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _showPaymentDialog,
+                    tooltip: 'Add Payment',
+                  ),
+                ],
+              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Pending Balance',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                Text(
+                  '₹ $pendingBalance',
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: _showAddChargesDialog,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Note'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primaryColor,
+                  ),
+                ),
+                const Spacer(),
+                OutlinedButton(
+                  onPressed: () {},
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primaryColor),
+                  ),
+                  child: const Text('Request Money'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildPaymentsList() {
     return StreamBuilder<DocumentSnapshot>(
@@ -734,83 +760,84 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   Future<void> _fetchPaymentAmount() async {
-  try {
-    // Fetch trip data from Firestore
-    DocumentSnapshot tripDoc = await FirebaseFirestore.instance
-        .collection('trips')
-        .doc(widget.tripId)
-        .get();
+    try {
+      // Fetch trip data from Firestore
+      DocumentSnapshot tripDoc = await FirebaseFirestore.instance
+          .collection('trips')
+          .doc(widget.tripId)
+          .get();
 
-    if (tripDoc.exists && tripDoc.data() != null) {
-      var data = tripDoc.data() as Map<String, dynamic>;  // Cast Firestore data
+      if (tripDoc.exists && tripDoc.data() != null) {
+        var data =
+            tripDoc.data() as Map<String, dynamic>; // Cast Firestore data
 
-      // Safely retrieve and calculate the total of 'amount' from the 'advances' array
-      final List<dynamic>? advances = data['advances'];  // Get the 'advances' field as List
-      final int totalAdvances = advances?.fold<int>(
-        0,
-        (sum, advance) {
-          // Make sure 'advance' is a Map and 'amount' is properly converted to int
-          final amount = int.tryParse(advance['amount']?.toString() ?? '0') ?? 0;
-          return sum + amount;
-        },
-      ) ?? 0;  // Default to 0 if 'advances' is null
+        // Safely retrieve and calculate the total of 'amount' from the 'advances' array
+        final List<dynamic>? advances =
+            data['advances']; // Get the 'advances' field as List
+        final int totalAdvances = advances?.fold<int>(
+              0,
+              (sum, advance) {
+                // Make sure 'advance' is a Map and 'amount' is properly converted to int
+                final amount =
+                    int.tryParse(advance['amount']?.toString() ?? '0') ?? 0;
+                return sum + amount;
+              },
+            ) ??
+            0; // Default to 0 if 'advances' is null
 
-      // Safely retrieve payment amounts (if available) and store them as List<String>
-      final List<dynamic>? payments = data['payments'];
-      final List<String> paymentAmounts = payments != null
-          ? List<String>.from(
-              payments.map((payment) => payment['amount']?.toString() ?? '0'),
-            )
-          : [];
+        // Safely retrieve payment amounts (if available) and store them as List<String>
+        final List<dynamic>? payments = data['payments'];
+        final List<String> paymentAmounts = payments != null
+            ? List<String>.from(
+                payments.map((payment) => payment['amount']?.toString() ?? '0'),
+              )
+            : [];
 
-      // Set state with the calculated values
-      setState(() {
-        this.paymentAmounts = paymentAmounts; // Update the payment amounts
-        _hasAdvance = true; // We now have advances
-      });
+        // Set state with the calculated values
+        setState(() {
+          this.paymentAmounts = paymentAmounts; // Update the payment amounts
+          _hasAdvance = true; // We now have advances
+        });
 
-      // Recalculate the pending balance after fetching the data
-      _calculatePendingBalance(totalAdvances);
-    } else {
-      // Handle case when trip document doesn't exist or has no data
-      setState(() {
-        paymentAmounts = [];
-        _hasAdvance = false;
-      });
+        // Recalculate the pending balance after fetching the data
+        _calculatePendingBalance(totalAdvances);
+      } else {
+        // Handle case when trip document doesn't exist or has no data
+        setState(() {
+          paymentAmounts = [];
+          _hasAdvance = false;
+        });
 
-      // Ensure the pending balance is recalculated when no data is found
-      _calculatePendingBalance(0); // No advances or payments found
+        // Ensure the pending balance is recalculated when no data is found
+        _calculatePendingBalance(0); // No advances or payments found
+      }
+    } catch (error) {
+      // Show error message if fetching payment data fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching payment amount: $error')),
+      );
     }
-  } catch (error) {
-    // Show error message if fetching payment data fails
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error fetching payment amount: $error')),
-    );
   }
-}
 
-void _calculatePendingBalance(int totalAdvances) {
-  final int freightAmount = int.tryParse(widget.tripData['amount']?.toString() ?? '0') ?? 0;
+  void _calculatePendingBalance(int totalAdvances) {
+    final int freightAmount =
+        int.tryParse(widget.tripData['amount']?.toString() ?? '0') ?? 0;
 
-  // Calculate total payments
-  final int totalPayments = paymentAmounts.fold<int>(
-    0,
-    (sum, payment) => sum + (int.tryParse(payment) ?? 0),
-  );
+    // Calculate total payments
+    final int totalPayments = paymentAmounts.fold<int>(
+      0,
+      (sum, payment) => sum + (int.tryParse(payment) ?? 0),
+    );
 
-  // Calculate pending balance
-  int calculatedPendingBalance = freightAmount - (totalAdvances + totalPayments);
+    // Calculate pending balance
+    int calculatedPendingBalance =
+        freightAmount - (totalAdvances + totalPayments);
 
-  // Update state with calculated balance
-  setState(() {
-    pendingBalance = calculatedPendingBalance.toString();
-  });
-}
-
-
-
-  
-
+    // Update state with calculated balance
+    setState(() {
+      pendingBalance = calculatedPendingBalance.toString();
+    });
+  }
 
   void _showAdvanceDialog() {
     TextEditingController advanceController = TextEditingController();
@@ -1002,8 +1029,7 @@ void _calculatePendingBalance(int totalAdvances) {
                     value: selectedPaymentMethod,
                     onChanged: (String? newValue) {
                       setStateDialog(() {
-                        selectedPaymentMethod =
-                            newValue!; // Update selected payment method
+                        selectedPaymentMethod = newValue!;
                       });
                     },
                     items: <String>[
@@ -1099,7 +1125,7 @@ void _calculatePendingBalance(int totalAdvances) {
             'timestamp': timestamp,
             'paymentMethod': selectedPaymentMethod,
             'date': enteredDate,
-            'fromtrip':'true',
+            'fromtrip': 'true',
             'type': 'got', // The transaction type is "got"
           });
         }
@@ -1170,7 +1196,7 @@ void _calculatePendingBalance(int totalAdvances) {
             'timestamp': timestamp,
             'paymentMethod': selectedPaymentMethod,
             'date': enteredDate,
-            'fromtrip':'true',
+            'fromtrip': 'true',
             'type': 'got', // The transaction type is "received"
           });
         }
