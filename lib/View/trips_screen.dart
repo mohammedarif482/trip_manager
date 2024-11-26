@@ -98,40 +98,6 @@ class _TripsScreenState extends State<TripsScreen> {
     }
   }
 
-  // Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
-  //   final String? userId = FirebaseAuth.instance.currentUser?.uid;
-  //   if (userId == null) {
-  //     throw Exception("User not logged in");
-  //   }
-  //   final DocumentSnapshot userSnapshot =
-  //       await FirebaseFirestore.instance.collection('users').doc(userId).get();
-  //   final Map<String, dynamic>? userData =
-  //       userSnapshot.data() as Map<String, dynamic>?;
-  //   if (userData == null) {
-  //     throw Exception("User data not found");
-  //   }
-  //   final String userName = userData['name'] ?? '';
-  //   final bool isDriver = userData['isDriver'] ?? false;
-  //   Query query = FirebaseFirestore.instance.collection('trips');
-  //   if (isDriver) {
-  //     query = query.where('driverName', isEqualTo: userName);
-  //   }
-  //   query = query.where('status', isEqualTo: 'Trip Completed');
-  //   final QuerySnapshot snapshot = await query.get();
-  //   return snapshot.docs.map((doc) {
-  //     return {
-  //       "tripId": doc.id,
-  //       "partyName": doc['partyName'],
-  //       "driverName": doc['driverName'],
-  //       "vehicleNumber": doc['vehicleNumber'],
-  //       "fromLocation": doc['fromLocation'],
-  //       "toLocation": doc['toLocation'],
-  //       "date": doc['date'],
-  //       "status": doc['status'],
-  //       "amount": doc['amount'],
-  //     };
-  //   }).toList();
-  // }
   Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
     final String? userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) {
