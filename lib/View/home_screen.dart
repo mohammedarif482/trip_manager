@@ -25,30 +25,26 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchPartyBalance();
   }
 
-  // Fetching party balances from Firestore
   Future<void> _fetchPartyBalance() async {
-    // List to store total balance for each party
     num totalBalance = 0;
 
-    // Get all party reports (assuming 'partyreport' collection exists)
-    final partyReportSnapshot = await FirebaseFirestore.instance.collection('partyreport').get();
+    final partyReportSnapshot =
+        await FirebaseFirestore.instance.collection('partyreport').get();
 
-    // Loop through each party report to calculate balance
     for (var partyDoc in partyReportSnapshot.docs) {
       final partyName = partyDoc['partyName'];
 
-      // Fetch related trips for the party from the 'trips' collection
       final tripsSnapshot = await FirebaseFirestore.instance
           .collection('trips')
           .where('partyName', isEqualTo: partyName)
           .get();
 
-      // Calculate the balance for each trip
       for (var tripDoc in tripsSnapshot.docs) {
         final tripData = tripDoc.data();
 
         final num amount = num.tryParse(tripData['amount'] ?? '0') ?? 0;
-        final num advanceAmount = num.tryParse(tripData['advanceAmount'] ?? '0') ?? 0;
+        final num advanceAmount =
+            num.tryParse(tripData['advanceAmount'] ?? '0') ?? 0;
 
         num paymentsTotal = 0;
         if (tripData['payments'] != null) {
@@ -57,14 +53,13 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
-        // Calculate balance for this trip
         totalBalance += amount - (advanceAmount + paymentsTotal);
       }
     }
 
     setState(() {
       totalPartyBalance = totalBalance;
-      isLoading = false; // Data is fully loaded
+      isLoading = false;
     });
   }
 
@@ -88,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: isLoading
-                    ? CircularProgressIndicator() // Show a loading indicator while fetching data
+                    ? CircularProgressIndicator()
                     : Text(
                         '₹ ${NumberFormat.currency(locale: 'en_IN', symbol: '').format(totalPartyBalance)}',
                         style: TextStyle(
@@ -163,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => PartyScreen(), // Navigate to PartyScreen
+                    builder: (context) => PartyScreen(),
                   ),
                 );
               },
@@ -193,7 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => DriversScreen(), // Navigate to DriversScreen
+                    builder: (context) =>
+                        DriversScreen(), // Navigate to DriversScreen
                   ),
                 );
               },
