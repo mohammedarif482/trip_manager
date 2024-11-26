@@ -257,24 +257,17 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
                   ),
                   child: DataTable(
                     columnSpacing: 12.0,
-                    dataRowHeight: 60.0, // Adjusted row height for larger font
-                    headingRowHeight: 70.0, // Adjusted header row height
+                    dataRowHeight: 50.0,
+                    headingRowHeight: 60.0,
                     headingRowColor: MaterialStateProperty.all(Colors.red), // Set header row color to red
-                    headingTextStyle: TextStyle(
-                      fontSize: 16.0, // Increased header font size
-                      color: Colors.white, // White text for contrast
-                      fontWeight: FontWeight.bold,
-                    ),
-                    dataTextStyle: TextStyle(
-                      fontSize: 14.0, // Increased row font size
-                      color: Colors.black, // Default row text color
-                    ),
+                    headingTextStyle: TextStyle(fontSize: headerFontSize, color: Colors.white), // White text for contrast
+                    dataTextStyle: TextStyle(fontSize: rowFontSize),
                     columns: [
-                      DataColumn(label: Text('Date', style: TextStyle(fontSize: 16.0))), // Adjusted font size
-                      DataColumn(label: Text('Description', style: TextStyle(fontSize: 16.0))),
-                      DataColumn(label: Text('Gave (-)', style: TextStyle(fontSize: 16.0))),
-                      DataColumn(label: Text('Got (+)', style: TextStyle(fontSize: 16.0))),
-                      DataColumn(label: Text('Balance', style: TextStyle(fontSize: 16.0))),
+                      DataColumn(label: Text('Date', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Description', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Gave (-)', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Got (+)', style: TextStyle(fontSize: rowFontSize))),
+                      DataColumn(label: Text('Balance', style: TextStyle(fontSize: rowFontSize))),
                     ],
                     rows: transactions.map((transaction) {
                       bool isMonthlyBalance = transaction['isMonthlyBalance'] ?? false;
@@ -283,19 +276,19 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
                             ? MaterialStateProperty.all(Colors.yellow.shade100) // Light yellow for monthly balance
                             : null,
                         cells: [
-                          DataCell(Text(transaction['date'] ?? '', style: TextStyle(fontSize: 14.0))),
-                          DataCell(Text(transaction['description'] ?? '', style: TextStyle(fontSize: 14.0))),
-                          DataCell(Text(transaction['gave']?.toString() ?? '', style: TextStyle(fontSize: 14.0))),
-                          DataCell(Text(transaction['got']?.toString() ?? '', style: TextStyle(fontSize: 14.0))),
-                          DataCell(Text(transaction['balance']?.toString() ?? '', style: TextStyle(fontSize: 14.0))),
+                          DataCell(Text(transaction['date'] ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['description'] ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['gave']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['got']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
+                          DataCell(Text(transaction['balance']?.toString() ?? '', style: TextStyle(fontSize: rowFontSize))),
                         ],
                       );
                     }).toList(),
                   ),
+
                 ),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.only(bottom: 10.0),
               child: ElevatedButton(
@@ -308,5 +301,4 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
       ),
     );
   }
-}
-
+}  
