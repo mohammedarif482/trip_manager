@@ -20,6 +20,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+        builder: (context, child) {
+          return MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(0.9)),
+            child: child!,
+          );
+        },
         title: 'TripManager',
         theme: ThemeData(
           textTheme: GoogleFonts.poppinsTextTheme(),
@@ -27,8 +34,7 @@ class MyApp extends StatelessWidget {
           scaffoldBackgroundColor: Colors.white,
         ),
         debugShowCheckedModeBanner: false,
-        home: AuthCheck() // Start with LoginScreen
-        );
+        home: AuthCheck());
   }
 }
 
