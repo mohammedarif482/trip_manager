@@ -135,6 +135,7 @@ class ReportTitleCard extends StatelessWidget {
 
 
 
+
 class ProfitLossReportScreen extends StatefulWidget {
   const ProfitLossReportScreen({super.key});
 
@@ -153,7 +154,6 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
 
   Future<List<Map<String, dynamic>>> fetchProfitLossData() async {
     final List<Map<String, dynamic>> data = [];
-
     try {
       final partySnapshot = await FirebaseFirestore.instance.collection('partyreport').get();
       final partyNames = partySnapshot.docs.map((doc) => doc['partyName'] as String).toList();
@@ -226,14 +226,33 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
 
           return SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  // Table with data
-                  DataTable(
-                    headingRowColor: MaterialStateProperty.all(Colors.red),
-                    headingTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                    columnSpacing: 8, // Reduce column spacing
+              padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 8.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.5),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0), // Padding inside the table
+                  child: DataTable(
+                    headingRowColor: MaterialStateProperty.all(
+                      Colors.redAccent,
+                    ),
+                    headingTextStyle: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16, // Increased font size for headers
+                    ),
+                    columnSpacing: 12,
+                    dataRowHeight: 50,
+                    dividerThickness: 1,
                     columns: const [
                       DataColumn(label: Text('Party Name')),
                       DataColumn(label: Text('Revenue')),
@@ -241,53 +260,65 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
                       DataColumn(label: Text('Profit')),
                     ],
                     rows: [
-                      ...data.map(
-                        (row) => DataRow(
-                          cells: [
-                            DataCell(Text(row['partyName'], style: TextStyle(fontSize: 12))),
-                            DataCell(Text(row['revenue'].toStringAsFixed(2), style: TextStyle(fontSize: 12))),
-                            DataCell(Text(row['expense'].toStringAsFixed(2), style: TextStyle(fontSize: 12))),
-                            DataCell(Text(row['profit'].toStringAsFixed(2), style: TextStyle(fontSize: 12))),
-                          ],
-                        ),
-                      ).toList(),
+                      ...data.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        Map<String, dynamic> row = entry.value;
 
-                      // Total row at the bottom of the table
+                        return DataRow(
+                          color: MaterialStateProperty.all(
+                            index % 2 == 0 ? Colors.grey[100] : Colors.grey[200],
+                          ),
+                          cells: [
+                            DataCell(
+                              Text(
+                                row['partyName'],
+                                style: TextStyle(fontSize: 14), // Slightly increased font size
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                row['revenue'].toStringAsFixed(2),
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                row['expense'].toStringAsFixed(2),
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                row['profit'].toStringAsFixed(2),
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+
+                      // Total Row
                       DataRow(
-                        color: MaterialStateProperty.all(Colors.green),
+                        color: MaterialStateProperty.all(Colors.greenAccent),
                         cells: [
                           DataCell(
                             Text(
                               "Totals",
                               style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12),
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
-                          DataCell(
-                            Text(
-                              totalRevenue.toStringAsFixed(2),
-                              style: TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              totalExpenses.toStringAsFixed(2),
-                              style: TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              totalProfit.toStringAsFixed(2),
-                              style: TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ),
+                          DataCell(Text(totalRevenue.toStringAsFixed(2))),
+                          DataCell(Text(totalExpenses.toStringAsFixed(2))),
+                          DataCell(Text(totalProfit.toStringAsFixed(2))),
                         ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           );
@@ -296,7 +327,6 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
     );
   }
 }
-
 
 
 class PartyBalanceReportScreen extends StatefulWidget {
