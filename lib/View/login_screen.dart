@@ -50,11 +50,16 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              SizedBox(width: 160, child: Image.asset("assets/icon/logo.png")),
               Text(
-                'Welcome to OGT!',
+                'Welcome to',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 10),
+              Text(
+                'ORIENTAL GENERAL TRANS SERVICES',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 60),
               Text(
                 'Sign in with your Google account to continue',
                 style: TextStyle(fontSize: 16),
