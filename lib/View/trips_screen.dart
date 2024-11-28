@@ -833,8 +833,10 @@ class _TripsScreenState extends State<TripsScreen> {
 
       final QuerySnapshot snapshot = await query.get();
 
-      // Map the results into a list
       final trips = snapshot.docs.map((doc) {
+        final Map<String, dynamic> tripData =
+            doc.data() as Map<String, dynamic>;
+
         return {
           "tripId": doc.id,
           "partyName": doc['partyName'],
@@ -845,6 +847,9 @@ class _TripsScreenState extends State<TripsScreen> {
           "date": doc['date'],
           "status": doc['status'],
           "amount": doc['amount'],
+          "endDate": tripData['endDate'] != null
+              ? (tripData['endDate'] as Timestamp).toDate()
+              : null,
         };
       }).toList();
 
@@ -891,6 +896,7 @@ class _TripsScreenState extends State<TripsScreen> {
     final QuerySnapshot snapshot = await query.get();
 
     return snapshot.docs.map((doc) {
+      final Map<String, dynamic> tripData = doc.data() as Map<String, dynamic>;
       return {
         "tripId": doc.id,
         "partyName": doc['partyName'],
@@ -901,6 +907,9 @@ class _TripsScreenState extends State<TripsScreen> {
         "date": doc['date'],
         "status": doc['status'],
         "amount": doc['amount'],
+        "endDate": tripData['endDate'] != null
+            ? (tripData['endDate'] as Timestamp).toDate()
+            : null,
       };
     }).toList();
   }

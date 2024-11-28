@@ -94,18 +94,35 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
               ),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => ReportsScreen(),
+            if (AuthCheck.isDriver == false)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => ReportsScreen(),
+                        ),
+                      );
+                    },
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(30),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.menu_book_rounded,
+                              size: 30,
+                            ),
+                            SizedBox(height: 16),
+                            Text("Reports"),
+                          ],
+                        ),
                       ),
-                    );
-                  },
-                  child: Card(
+                    ),
+                  ),
+                  Card(
                     child: Padding(
                       padding: const EdgeInsets.all(30),
                       child: Column(
@@ -120,39 +137,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                ),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.menu_book_rounded,
-                          size: 30,
-                        ),
-                        SizedBox(height: 16),
-                        Text("Reports"),
-                      ],
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(30),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.menu_book_rounded,
+                            size: 30,
+                          ),
+                          SizedBox(height: 16),
+                          Text("Reports"),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.menu_book_rounded,
-                          size: 30,
-                        ),
-                        SizedBox(height: 16),
-                        Text("Reports"),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
             const SizedBox(height: 10),
             GestureDetector(
               onTap: () {
