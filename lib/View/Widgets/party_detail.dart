@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tripmanager/Utils/constants.dart';
+import 'package:tripmanager/View/Widgets/partystatement.dart';
 
 class PartyDetail extends StatefulWidget {
   final Map<String, dynamic> tripData;
@@ -543,12 +544,20 @@ class _PartyDetailState extends State<PartyDetail> {
                 ),
                 const Spacer(),
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PartyStatement(tripId: widget.tripId),  // Passing dynamic tripId
+                      ),
+                    );
+                  },
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.primaryColor),
                   ),
-                  child: const Text('Request Money'),
+                  child: const Text('Show Statement'),
                 ),
+
               ],
             ),
           ],

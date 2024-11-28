@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
@@ -196,6 +198,63 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
     return data;
   }
 
+  // Function to generate the PDF
+  Future<void> _generatePdf(List<Map<String, dynamic>> data) async {
+    final pdf = pw.Document();
+
+    // Add a page
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Text('Profit/Loss Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 20),
+              pw.Table.fromTextArray(
+                context: context,
+                data: [
+                  ['Party Name', 'Revenue', 'Expense', 'Profit'],
+                  ...data.map((row) => [
+                    row['partyName'],
+                    row['revenue'].toStringAsFixed(2),
+                    row['expense'].toStringAsFixed(2),
+                    row['profit'].toStringAsFixed(2),
+                  ])
+                ],
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                cellHeight: 40,
+                cellAlignments: {
+                  0: pw.Alignment.centerLeft,
+                  1: pw.Alignment.centerRight,
+                  2: pw.Alignment.centerRight,
+                  3: pw.Alignment.centerRight,
+                },
+              ),
+              pw.SizedBox(height: 20),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Totals', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.Text(
+                    '${data.fold(0.0, (sum, row) => sum + row['revenue'])} / '
+                    '${data.fold(0.0, (sum, row) => sum + row['expense'])} / '
+                    '${data.fold(0.0, (sum, row) => sum + row['profit'])}',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // Save and open the PDF
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -208,7 +267,7 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
           icon: Icon(Icons.arrow_back),
         ),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<List<Map<String, dynamic>>>( 
         future: profitLossData,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -241,80 +300,91 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(8.0), // Padding inside the table
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(
-                      Colors.redAccent,
-                    ),
-                    headingTextStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16, // Increased font size for headers
-                    ),
-                    columnSpacing: 12,
-                    dataRowHeight: 50,
-                    dividerThickness: 1,
-                    columns: const [
-                      DataColumn(label: Text('Party Name')),
-                      DataColumn(label: Text('Revenue')),
-                      DataColumn(label: Text('Expense')),
-                      DataColumn(label: Text('Profit')),
-                    ],
-                    rows: [
-                      ...data.asMap().entries.map((entry) {
-                        int index = entry.key;
-                        Map<String, dynamic> row = entry.value;
-
-                        return DataRow(
-                          color: MaterialStateProperty.all(
-                            index % 2 == 0 ? Colors.grey[100] : Colors.grey[200],
-                          ),
-                          cells: [
-                            DataCell(
-                              Text(
-                                row['partyName'],
-                                style: TextStyle(fontSize: 14), // Slightly increased font size
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                row['revenue'].toStringAsFixed(2),
-                                style: TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                row['expense'].toStringAsFixed(2),
-                                style: TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                row['profit'].toStringAsFixed(2),
-                                style: TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-
-                      // Total Row
-                      DataRow(
-                        color: MaterialStateProperty.all(Colors.greenAccent),
-                        cells: [
-                          DataCell(
-                            Text(
-                              "Totals",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          DataCell(Text(totalRevenue.toStringAsFixed(2))),
-                          DataCell(Text(totalExpenses.toStringAsFixed(2))),
-                          DataCell(Text(totalProfit.toStringAsFixed(2))),
+                  child: Column(
+                    children: [
+                      DataTable(
+                        headingRowColor: MaterialStateProperty.all(
+                          Colors.redAccent,
+                        ),
+                        headingTextStyle: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16, // Increased font size for headers
+                        ),
+                        columnSpacing: 12,
+                        dataRowHeight: 50,
+                        dividerThickness: 1,
+                        columns: const [
+                          DataColumn(label: Text('Party Name')),
+                          DataColumn(label: Text('Revenue')),
+                          DataColumn(label: Text('Expense')),
+                          DataColumn(label: Text('Profit')),
                         ],
+                        rows: [
+                          ...data.asMap().entries.map((entry) {
+                            int index = entry.key;
+                            Map<String, dynamic> row = entry.value;
+
+                            return DataRow(
+                              color: MaterialStateProperty.all(
+                                index % 2 == 0 ? Colors.grey[100] : Colors.grey[200],
+                              ),
+                              cells: [
+                                DataCell(
+                                  Text(
+                                    row['partyName'],
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    row['revenue'].toStringAsFixed(2),
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    row['expense'].toStringAsFixed(2),
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    row['profit'].toStringAsFixed(2),
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+
+                          // Total Row
+                          DataRow(
+                            color: MaterialStateProperty.all(Colors.greenAccent),
+                            cells: [
+                              DataCell(
+                                Text(
+                                  "Totals",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              DataCell(Text(totalRevenue.toStringAsFixed(2))),
+                              DataCell(Text(totalExpenses.toStringAsFixed(2))),
+                              DataCell(Text(totalProfit.toStringAsFixed(2))),
+                            ],
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          _generatePdf(data);
+                        },
+                        child: Text('Download PDF'),
                       ),
                     ],
                   ),
@@ -407,6 +477,41 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
       }).toList();
     });
   }
+
+  Future<void> _generatePdf() async {
+    final pdf = pw.Document();
+    
+    // Add PDF Header
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('Party Balance Report', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 20),
+              pw.Table.fromTextArray(
+                headers: ['Party Name', 'Balance'],
+                data: filteredBalances.map((party) {
+                  return [
+                    party['partyName'],
+                    NumberFormat('#,##0.00') // No currency symbol
+                        .format(party['balance']),
+                  ];
+                }).toList(),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // Save and download PDF
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -531,6 +636,17 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
                           );
                         },
                       ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              onPressed: _generatePdf,
+              child: Text("Download PDF"),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                textStyle: TextStyle(fontSize: 16),
+              ),
+            ),
           ),
         ],
       ),
