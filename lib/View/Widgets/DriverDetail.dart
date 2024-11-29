@@ -26,22 +26,51 @@ class _DriverDetailState extends State<DriverDetail> {
 
   // Load the transactions for the specific driver by driver name
   Future<void> _loadTransactions() async {
-    try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('drivertransactions')
-          .where('driverName', isEqualTo: widget.tripData['driverName']) // filter by driverName
-          .get();
+  try {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('drivertransactions')
+        .where('driverName', isEqualTo: widget.tripData['driverName']) // filter by driverName
+        .get();
 
-      setState(() {
-        _transactions.clear();  // Clear existing transactions
-        _transactions.addAll(snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>));
-        
-        _calculateTotals();  // Recalculate totals after loading transactions
-      });
-    } catch (e) {
-      print("Error loading transactions: $e");
-    }
+    setState(() {
+      _transactions.clear();  // Clear existing transactions
+      _transactions.addAll(snapshot.docs.map((doc) {
+        var transaction = doc.data() as Map<String, dynamic>;
+        transaction['id'] = doc.id; // Add Firestore document ID to each transaction
+        return transaction;
+      }));
+      
+      _calculateTotals();  // Recalculate totals after loading transactions
+    });
+  } catch (e) {
+    print("Error loading transactions: $e");
   }
+}
+
+  Future<void> _deleteTransaction(String transactionId) async {
+  try {
+    // Ensure that the transactionId is not null or empty
+    if (transactionId == null || transactionId.isEmpty) {
+      print("Invalid transaction ID");
+      return;
+    }
+
+    // Delete the transaction from Firestore using the document ID
+    await FirebaseFirestore.instance
+        .collection('drivertransactions')
+        .doc(transactionId) // Use Firestore document ID
+        .delete();
+
+    // Remove the transaction from the local list using the transactionId
+    setState(() {
+      _transactions.removeWhere((transaction) => transaction['id'] == transactionId); // Match using 'id'
+    });
+  } catch (e) {
+    print("Error deleting transaction: $e");
+  }
+}
+
+
 
   // Calculate total driver got, total driver gave, and the total collected
   void _calculateTotals() {
@@ -173,6 +202,7 @@ class _DriverDetailState extends State<DriverDetail> {
     ),
   );
 }
+
 
 
 
@@ -556,8 +586,7 @@ Future<void> _showSettleDialog(BuildContext context) async {
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8.0),
                                     child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 8.0, vertical: 4.0),
+                                      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                       decoration: BoxDecoration(
                                         color: Colors.blue.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(4.0),
@@ -607,14 +636,18 @@ Future<void> _showSettleDialog(BuildContext context) async {
                                   )
                                 : Center(child: Text("-")),
                           ),
+                          // Delete Button (only visible if not from a trip)
+                          if (!hasFromTrip)
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                _deleteTransaction(transaction['id']);                             },
+                            ),
                         ],
                       ),
                     );
                   }).toList(),
                 ),
-
-
-
 
 
 
@@ -643,3 +676,4 @@ Future<void> _showSettleDialog(BuildContext context) async {
     );
   }
 }
+

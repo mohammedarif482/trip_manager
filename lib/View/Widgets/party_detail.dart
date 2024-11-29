@@ -358,361 +358,295 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   Widget _buildFinancialDetails() {
-    final List<Map<String, dynamic>> advanceData =
-        List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
-    final List<Map<String, dynamic>> paymentData =
-        List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
+  final List<Map<String, dynamic>> advanceData =
+      List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
+  final List<Map<String, dynamic>> paymentData =
+      List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildAmountRow(
-                'Freight Amount', '₹ ${widget.tripData['amount']}', true),
-            const SizedBox(height: 4),
-            if (advanceData.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Advances:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed:
-                            _showAdvanceDialog, // Function to add advances
-                        tooltip: 'Add Advance',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Colors.grey.shade100,
+  return Container(
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildAmountRow(
+              'Freight Amount', '₹ ${widget.tripData['amount']}', true),
+          const SizedBox(height: 4),
+          if (advanceData.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Advances:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: advanceData.map((advance) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('₹ ${advance['amount']}',
-                                  style: TextStyle(fontSize: 16)),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('${advance['date']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                  Text('${advance['paymentMethod']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _showAdvanceDialog, // Function to add advances
+                      tooltip: 'Add Advance',
                     ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.grey.shade100,
                   ),
-                ],
-              )
-            else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('No advances added yet.',
-                      style: TextStyle(color: Colors.grey)),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: _showAdvanceDialog,
-                    tooltip: 'Add Advance',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: advanceData.map((advance) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('₹ ${advance['amount']}',
+                                    style: TextStyle(fontSize: 16)),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _deleteAdvance(advance),
+                                  tooltip: 'Delete Advance',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${advance['date']}',
+                                    style: TextStyle(color: Colors.grey)),
+                                Text('${advance['paymentMethod']}',
+                                    style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
-                ],
-              ),
-            const SizedBox(height: 8),
-            const Divider(height: 32),
-            const SizedBox(height: 16),
-            if (paymentData.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Payments:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed:
-                            _showPaymentDialog, // Function to add payments
-                        tooltip: 'Add Payment',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Colors.grey.shade100,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: paymentData.map((payment) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('₹ ${payment['amount']}',
-                                  style: TextStyle(fontSize: 16)),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('${payment['date']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                  Text('${payment['paymentMethod']}',
-                                      style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              )
-            else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('No payments made yet.',
-                      style: TextStyle(color: Colors.grey)),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: _showPaymentDialog,
-                    tooltip: 'Add Payment',
-                  ),
-                ],
-              ),
-            const SizedBox(height: 16),
+                ),
+              ],
+            )
+          else
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Pending Balance',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black),
-                ),
-                Text(
-                  '₹ $pendingBalance',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                const Text('No advances added yet.',
+                    style: TextStyle(color: Colors.grey)),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _showAdvanceDialog,
+                  tooltip: 'Add Advance',
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
+          const SizedBox(height: 8),
+          const Divider(height: 32),
+          const SizedBox(height: 16),
+          if (paymentData.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextButton.icon(
-                  onPressed: _showAddChargesDialog,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Note'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primaryColor,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Payments:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: _showPaymentDialog, // Function to add payments
+                      tooltip: 'Add Payment',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.grey.shade100,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: paymentData.map((payment) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('₹ ${payment['amount']}',
+                                    style: TextStyle(fontSize: 16)),
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _deletePayment(payment),
+                                  tooltip: 'Delete Payment',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${payment['date']}',
+                                    style: TextStyle(color: Colors.grey)),
+                                Text('${payment['paymentMethod']}',
+                                    style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
-                const Spacer(),
-                OutlinedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PartyStatement(tripId: widget.tripId),  // Passing dynamic tripId
-                      ),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.primaryColor),
-                  ),
-                  child: const Text('Show Statement'),
-                ),
-
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentsList() {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('trips')
-          .doc(widget.tripId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
-
-        if (!snapshot.hasData || snapshot.data!.data() == null) {
-          return const Text('No payments available.');
-        }
-
-        final tripData = snapshot.data!.data() as Map<String, dynamic>;
-        final payments = tripData['payments'] ?? [];
-
-        if (payments.isEmpty) {
-          return const SizedBox(); // No payments to display
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            const Text(
-              'Payments',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            ...payments.map<Widget>((payment) {
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Payment:'),
-                  Text(
-                    '₹ ${payment['amount']}',
-                    style: const TextStyle(color: Colors.green),
-                  ),
-                ],
-              );
-            }).toList(),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildAdvanceDisplay() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Advance',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              advanceAmount,
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: paymentAmounts.map((payment) {
-            return Row(
+            )
+          else
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Payment', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(payment, style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('No payments made yet.',
+                    style: TextStyle(color: Colors.grey)),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: _showPaymentDialog,
+                  tooltip: 'Add Payment',
+                ),
               ],
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPaymentList() {
-    return ListView.builder(
-      itemCount: paymentList.length,
-      itemBuilder: (context, index) {
-        return ListTile(
-          title: Text('Payment: ${paymentList[index]}'),
-        );
-      },
-    );
-  }
-
-  Widget _buildPaymentSection() {
-    return GestureDetector(
-      onTap: () {
-        _showPaymentDialog();
-      },
-      child: Container(
-        width: 120,
-        child: const Row(
-          children: [
-            Text(
-              'Add Payment',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryColor,
+            ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Pending Balance',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.black),
               ),
-            ),
-            Icon(
-              Icons.add,
-              color: AppColors.primaryColor,
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdvanceSection() {
-    return GestureDetector(
-      onTap: () {
-        _showAdvanceDialog();
-      },
-      child: Container(
-        width: 120,
-        child: Row(
-          children: [
-            Text(
-              'Add Advance', // Always show 'Add Advance'
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryColor,
+              Text(
+                '₹ $pendingBalance',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
               ),
-            ),
-            Icon(
-              Icons.add,
-              color: AppColors.primaryColor,
-              size: 22,
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _showAddChargesDialog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Note'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primaryColor,
+                ),
+              ),
+              const Spacer(),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PartyStatement(tripId: widget.tripId),  // Passing dynamic tripId
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primaryColor),
+                ),
+                child: const Text('Show Statement'),
+              ),
+
+            ],
+          ),
+        ],
       ),
+    ),
+  );
+}
+
+
+
+Future<void> _deleteAdvance(Map<String, dynamic> advance) async {
+  try {
+    // Remove from the 'advances' field in the 'trips' collection
+    final tripRef = FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
+    await tripRef.update({
+      'advances': FieldValue.arrayRemove([advance])
+    });
+
+    // Check and remove from the 'drivertransactions' collection
+    final driverTransactionsRef = FirebaseFirestore.instance.collection('drivertransactions');
+    final querySnapshot = await driverTransactionsRef
+        .where('description', isEqualTo: 'Trip advance')
+        .where('date', isEqualTo: advance['date'])
+        .where('amount', isEqualTo: advance['amount'])
+        .where('paymentMethod', isEqualTo: advance['paymentMethod'])
+        .get();
+
+    for (var doc in querySnapshot.docs) {
+      await doc.reference.delete();
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Advance deleted successfully.')),
+    );
+  } catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Failed to delete advance.')),
     );
   }
+}
+
+Future<void> _deletePayment(Map<String, dynamic> payment) async {
+  try {
+    // Remove from the 'payments' field in the 'trips' collection
+    final tripRef = FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
+    await tripRef.update({
+      'payments': FieldValue.arrayRemove([payment])
+    });
+
+    // Check and remove from the 'drivertransactions' collection
+    final driverTransactionsRef = FirebaseFirestore.instance.collection('drivertransactions');
+    final querySnapshot = await driverTransactionsRef
+        .where('description', isEqualTo: 'Trip payment')
+        .where('date', isEqualTo: payment['date'])
+        .where('amount', isEqualTo: payment['amount'])
+        .where('paymentMethod', isEqualTo: payment['paymentMethod'])
+        .get();
+
+    for (var doc in querySnapshot.docs) {
+      await doc.reference.delete();
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment deleted successfully.')),
+    );
+  } catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Failed to delete payment.')),
+    );
+  }
+}
+
+
 
   Widget _buildAddLoadButton() {
     return InkWell(
