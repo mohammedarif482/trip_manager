@@ -907,11 +907,11 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
                     } else {
                       _addAdvanceToFirestore(isReceivedByDriver,
                           selectedPaymentMethod, enteredDate, enteredAmount);
-                      Navigator.of(context)
-                          .pop(); // Close the dialog after adding the advance
+                      _fetchAdvanceAmount();
                     }
                   },
                   child: const Text('Add Advance'),
+
                 ),
               ],
             );
@@ -1027,8 +1027,7 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
                         enteredDate,
                         enteredAmount,
                       );
-                      Navigator.of(context)
-                          .pop(); // Close the dialog after adding the payment
+                       
                     }
                   },
                   child: const Text('Add Payment'),

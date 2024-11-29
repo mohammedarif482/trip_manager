@@ -420,25 +420,42 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
     _fetchPartyBalances();
   }
 
+  // Method to fetch and listen to changes in party balances in real time
   Future<void> _fetchPartyBalances() async {
-    final List<Map<String, dynamic>> balances = [];
-    final partyReportSnapshot =
-        await FirebaseFirestore.instance.collection('partyreport').get();
+  setState(() {
+    isLoading = true; // Start loading state
+  });
 
-    for (var partyDoc in partyReportSnapshot.docs) {
-      final partyName = partyDoc['partyName'];
+  final List<Map<String, dynamic>> balances = [];
 
-      final tripsSnapshot = await FirebaseFirestore.instance
-          .collection('trips')
-          .where('partyName', isEqualTo: partyName)
-          .get();
+  final partyReportSnapshot =
+      await FirebaseFirestore.instance.collection('partyreport').get();
 
+  for (var partyDoc in partyReportSnapshot.docs) {
+    final partyName = partyDoc['partyName'];
+
+    // Query the trips collection and calculate balance
+    final tripsSnapshot = await FirebaseFirestore.instance
+        .collection('trips')
+        .where('partyName', isEqualTo: partyName)
+        .snapshots();
+
+    // Listen for real-time updates
+    tripsSnapshot.listen((tripSnapshot) {
       num totalBalance = 0;
-      for (var tripDoc in tripsSnapshot.docs) {
+
+      for (var tripDoc in tripSnapshot.docs) {
         final tripData = tripDoc.data();
         final num amount = num.tryParse(tripData['amount'] ?? '0') ?? 0;
-        final num advanceAmount =
-            num.tryParse(tripData['advanceAmount'] ?? '0') ?? 0;
+        
+        
+        
+        num advanceTotal = 0;
+        if (tripData['advances'] != null) {
+          for (var advance in tripData['advances']) {
+            advanceTotal += num.tryParse(advance['amount'] ?? '0') ?? 0;
+          }
+        }
 
         num paymentsTotal = 0;
         if (tripData['payments'] != null) {
@@ -447,22 +464,26 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
           }
         }
 
-        totalBalance += amount - (advanceAmount + paymentsTotal);
+        totalBalance += amount - (advanceTotal + paymentsTotal);
       }
 
+      // Update the balance for the party in real-time
       balances.add({
         'partyName': partyName,
         'balance': totalBalance,
       });
-    }
 
-    setState(() {
-      partyBalances = balances;
-      filteredBalances = balances;
-      isLoading = false; // Data is fully loaded
+      setState(() {
+        partyBalances = balances;
+        filteredBalances = balances;
+        isLoading = false; // Data loading is done
+      });
     });
   }
+}
 
+
+  // Method to filter balances based on search query and filter selection
   void _filterBalances() {
     setState(() {
       filteredBalances = partyBalances.where((party) {
@@ -478,9 +499,15 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
     });
   }
 
+  // Method to refresh the balances
+  void _refreshBalances() {
+    _fetchPartyBalances();
+  }
+
+  // Generate the PDF report
   Future<void> _generatePdf() async {
     final pdf = pw.Document();
-    
+
     // Add PDF Header
     pdf.addPage(
       pw.Page(
@@ -511,7 +538,6 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -653,6 +679,8 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
     );
   }
 }
+
+
 
 
 class PartyRevenueReportScreen extends StatefulWidget {
