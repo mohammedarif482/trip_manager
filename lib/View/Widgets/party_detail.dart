@@ -470,6 +470,7 @@ class _PartyDetailState extends State<PartyDetail> {
                       icon: const Icon(Icons.add),
                       onPressed: _showPaymentDialog, // Function to add payments
                       tooltip: 'Add Payment',
+                      
                     ),
                   ],
                 ),
@@ -605,6 +606,12 @@ Future<void> _deleteAdvance(Map<String, dynamic> advance) async {
       await doc.reference.delete();
     }
 
+    // Update the local list and UI
+    setState(() {
+      // Remove the deleted advance from the displayed list
+      widget.tripData['advances'].remove(advance);  // Update the tripData in widget
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Advance deleted successfully.')),
     );
@@ -612,12 +619,14 @@ Future<void> _deleteAdvance(Map<String, dynamic> advance) async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Failed to delete advance.')),
     );
+    print("Error deleting advance: $error");  // Optionally log the error for debugging
   }
 }
 
+
 Future<void> _deletePayment(Map<String, dynamic> payment) async {
   try {
-    // Remove from the 'payments' field in the 'trips' collection
+    // Remove from the 'advances' field in the 'trips' collection
     final tripRef = FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
     await tripRef.update({
       'payments': FieldValue.arrayRemove([payment])
@@ -636,13 +645,20 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
       await doc.reference.delete();
     }
 
+    // Update the local list and UI
+    setState(() {
+      // Remove the deleted advance from the displayed list
+      widget.tripData['payments'].remove(payment);  // Update the tripData in widget
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Payment deleted successfully.')),
     );
   } catch (error) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Failed to delete payment.')),
+      const SnackBar(content: Text('Failed to delete Payment.')),
     );
+    print("Error deleting Payment: $error");  // Optionally log the error for debugging
   }
 }
 
@@ -797,154 +813,31 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
   }
 
   void _showAdvanceDialog() {
-    TextEditingController advanceController = TextEditingController();
-    TextEditingController dateController = TextEditingController();
-    bool isReceivedByDriver = false;
-    String selectedPaymentMethod = 'Cash';
+  TextEditingController advanceController = TextEditingController();
+  TextEditingController dateController = TextEditingController();
+  bool isReceivedByDriver = false;
+  String selectedPaymentMethod = 'Cash';
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setStateDialog) {
-            return AlertDialog(
-              title: const Text('Add Advance'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: advanceController,
-                      decoration: const InputDecoration(
-                          labelText: 'Enter Advance Amount'),
-                      keyboardType:
-                          TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (value) {
-                        print('Amount field changed: $value');
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Received by Driver'),
-                        Switch(
-                          value: isReceivedByDriver,
-                          onChanged: (bool newValue) {
-                            setStateDialog(() {
-                              isReceivedByDriver = newValue;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButton<String>(
-                      value: selectedPaymentMethod,
-                      onChanged: (String? newValue) {
-                        setStateDialog(() {
-                          selectedPaymentMethod = newValue!;
-                        });
-                      },
-                      items: <String>[
-                        'Cash',
-                        'UPI',
-                        'Credit Card',
-                        'Bank Transfer'
-                      ].map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      isExpanded: true,
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: dateController,
-                      decoration:
-                          const InputDecoration(labelText: 'Select Date'),
-                      readOnly: true, // Prevent typing, show date picker on tap
-                      onTap: () async {
-                        DateTime? pickedDate = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2101),
-                        );
-                        if (pickedDate != null) {
-                          String formattedDate =
-                              "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
-                          setStateDialog(() {
-                            dateController.text =
-                                formattedDate; // Set the formatted date in controller
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    String enteredAmount = advanceController.text.trim();
-                    String enteredDate = dateController.text.trim();
-
-                    print('Entered Amount: $enteredAmount');
-                    print('Entered Date: $enteredDate');
-
-                    if (enteredAmount.isEmpty || enteredDate.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Please enter a valid amount and date')),
-                      );
-                    } else {
-                      _addAdvanceToFirestore(isReceivedByDriver,
-                          selectedPaymentMethod, enteredDate, enteredAmount);
-                      _fetchAdvanceAmount();
-                    }
-                  },
-                  child: const Text('Add Advance'),
-
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showPaymentDialog() {
-    bool isReceivedByDriver = false; // Track switch state
-    TextEditingController paymentController =
-        TextEditingController(); // Controller for payment amount field
-    TextEditingController dateController =
-        TextEditingController(); // Controller for date field
-    String selectedPaymentMethod = 'Cash'; // Default payment method
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setStateDialog) {
-            return AlertDialog(
-              title: const Text('Add Payment'),
-              content: Column(
-                mainAxisSize:
-                    MainAxisSize.min, // Adjust size to fit the content
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setStateDialog) {
+          return AlertDialog(
+            title: const Text('Add Advance'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
-                    controller: paymentController,
-                    decoration:
-                        const InputDecoration(labelText: 'Enter Amount'),
-                    keyboardType: TextInputType.number,
+                    controller: advanceController,
+                    decoration: const InputDecoration(
+                        labelText: 'Enter Advance Amount'),
+                    keyboardType:
+                        TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) {
+                      print('Amount field changed: $value');
+                    },
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -960,26 +853,6 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
                         },
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: dateController,
-                    decoration: const InputDecoration(labelText: 'Select Date'),
-                    readOnly: true, // Prevent typing, only allow date picker
-                    onTap: () async {
-                      DateTime? pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2101),
-                      );
-                      if (pickedDate != null) {
-                        setStateDialog(() {
-                          dateController.text = "${pickedDate.toLocal()}"
-                              .split(' ')[0]; // Format as YYYY-MM-DD
-                        });
-                      }
-                    },
                   ),
                   const SizedBox(height: 10),
                   DropdownButton<String>(
@@ -1002,43 +875,186 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
                     }).toList(),
                     isExpanded: true,
                   ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: dateController,
+                    decoration: const InputDecoration(labelText: 'Select Date'),
+                    readOnly: true, // Prevent typing, show date picker on tap
+                    onTap: () async {
+                      DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2101),
+                      );
+                      if (pickedDate != null) {
+                        String formattedDate =
+                            "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
+                        setStateDialog(() {
+                          dateController.text =
+                              formattedDate; // Set the formatted date in controller
+                        });
+                      }
+                    },
+                  ),
                 ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    String enteredAmount = paymentController.text.trim();
-                    String enteredDate = dateController.text.trim();
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  String enteredAmount = advanceController.text.trim();
+                  String enteredDate = dateController.text.trim();
 
-                    if (enteredAmount.isEmpty || enteredDate.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Please enter a valid amount and date')),
-                      );
-                    } else {
-                      _addPaymentToFirestore(
-                        isReceivedByDriver,
-                        selectedPaymentMethod,
-                        enteredDate,
-                        enteredAmount,
-                      );
-                       
+                  print('Entered Amount: $enteredAmount');
+                  print('Entered Date: $enteredDate');
+
+                  if (enteredAmount.isEmpty || enteredDate.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('Please enter a valid amount and date')),
+                    );
+                  } else {
+                    _addAdvanceToFirestore(isReceivedByDriver,
+                        selectedPaymentMethod, enteredDate, enteredAmount);
+                    _fetchAdvanceAmount();
+                    Navigator.of(context).pop(); // Close the dialog after adding
+                  }
+                },
+                child: const Text('Add Advance'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+
+  void _showPaymentDialog() {
+  bool isReceivedByDriver = false; // Track switch state
+  TextEditingController paymentController =
+      TextEditingController(); // Controller for payment amount field
+  TextEditingController dateController =
+      TextEditingController(); // Controller for date field
+  String selectedPaymentMethod = 'Cash'; // Default payment method
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (BuildContext context, StateSetter setStateDialog) {
+          return AlertDialog(
+            title: const Text('Add Payment'),
+            content: Column(
+              mainAxisSize:
+                  MainAxisSize.min, // Adjust size to fit the content
+              children: [
+                TextField(
+                  controller: paymentController,
+                  decoration: const InputDecoration(labelText: 'Enter Amount'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Received by Driver'),
+                    Switch(
+                      value: isReceivedByDriver,
+                      onChanged: (bool newValue) {
+                        setStateDialog(() {
+                          isReceivedByDriver = newValue;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: dateController,
+                  decoration: const InputDecoration(labelText: 'Select Date'),
+                  readOnly: true, // Prevent typing, only allow date picker
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2101),
+                    );
+                    if (pickedDate != null) {
+                      setStateDialog(() {
+                        dateController.text = "${pickedDate.toLocal()}"
+                            .split(' ')[0]; // Format as YYYY-MM-DD
+                      });
                     }
                   },
-                  child: const Text('Add Payment'),
+                ),
+                const SizedBox(height: 10),
+                DropdownButton<String>(
+                  value: selectedPaymentMethod,
+                  onChanged: (String? newValue) {
+                    setStateDialog(() {
+                      selectedPaymentMethod = newValue!;
+                    });
+                  },
+                  items: <String>[
+                    'Cash',
+                    'UPI',
+                    'Credit Card',
+                    'Bank Transfer'
+                  ].map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  isExpanded: true,
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  String enteredAmount = paymentController.text.trim();
+                  String enteredDate = dateController.text.trim();
+
+                  if (enteredAmount.isEmpty || enteredDate.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('Please enter a valid amount and date')),
+                    );
+                  } else {
+                    _addPaymentToFirestore(
+                      isReceivedByDriver,
+                      selectedPaymentMethod,
+                      enteredDate,
+                      enteredAmount,
+                    );
+                    Navigator.of(context).pop(); // Close the dialog after adding
+                  }
+                },
+                child: const Text('Add Payment'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
 
   void _addAdvanceToFirestore(
       bool isReceivedByDriver,
