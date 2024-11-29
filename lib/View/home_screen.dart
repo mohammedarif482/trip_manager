@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/reports_screen.dart';
 import 'package:tripmanager/View/vehicles_screen.dart';
-import 'package:tripmanager/View/party_screen.dart'; // Import your PartyScreen here
-import 'package:tripmanager/View/drivers_screen.dart'; // Import your existing DriversScreen here
+import 'package:tripmanager/View/party_screen.dart';
+import 'package:tripmanager/View/drivers_screen.dart';
 import 'package:tripmanager/main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart'; // For formatting currency
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -71,90 +71,88 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 16),
-            if (AuthCheck.isDriver == false)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Total Party Balance',
-                  style: TextStyle(fontSize: 26),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Total Party Balance',
+                style: TextStyle(fontSize: 26),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: isLoading
+                  ? CircularProgressIndicator()
+                  : Text(
+                      '₹ ${NumberFormat.currency(locale: 'en_IN', symbol: '').format(totalPartyBalance)}',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryColor,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => ReportsScreen(),
+                      ),
+                    );
+                  },
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(30),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.menu_book_rounded,
+                            size: 30,
+                          ),
+                          SizedBox(height: 16),
+                          Text("Reports"),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            if (AuthCheck.isDriver == false)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: isLoading
-                    ? CircularProgressIndicator()
-                    : Text(
-                        '₹ ${NumberFormat.currency(locale: 'en_IN', symbol: '').format(totalPartyBalance)}',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryColor,
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(30),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.menu_book_rounded,
+                          size: 30,
                         ),
-                      ),
-              ),
+                        SizedBox(height: 16),
+                        Text("Reports"),
+                      ],
+                    ),
+                  ),
+                ),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(30),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.menu_book_rounded,
+                          size: 30,
+                        ),
+                        SizedBox(height: 16),
+                        Text("Reports"),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
-            if (AuthCheck.isDriver == false)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => ReportsScreen(),
-                        ),
-                      );
-                    },
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(30),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.menu_book_rounded,
-                              size: 30,
-                            ),
-                            SizedBox(height: 16),
-                            Text("Reports"),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(30),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.menu_book_rounded,
-                            size: 30,
-                          ),
-                          SizedBox(height: 16),
-                          Text("Reports"),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(30),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.menu_book_rounded,
-                            size: 30,
-                          ),
-                          SizedBox(height: 16),
-                          Text("Reports"),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 10),
+            // if (AuthCheck.isDriver == false)
             GestureDetector(
               onTap: () {
                 Navigator.of(context).push(

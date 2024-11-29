@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:tripmanager/Utils/constants.dart';
-import 'package:tripmanager/View/home_screen.dart';
 import 'package:tripmanager/View/trips_screen.dart';
 import 'package:tripmanager/View/profile_screen.dart';
-import 'package:tripmanager/View/transactions_screen.dart';
-import 'package:tripmanager/main.dart';
 
-class BottomNavBar extends StatefulWidget {
+class DriverBottomNavBar extends StatefulWidget {
   @override
-  _BottomNavBarState createState() => _BottomNavBarState();
+  _DriverBottomNavBarState createState() => _DriverBottomNavBarState();
 }
 
-class _BottomNavBarState extends State<BottomNavBar> {
+class _DriverBottomNavBarState extends State<DriverBottomNavBar> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    HomeScreen(),
     TripsScreen(),
     ProfileScreen(),
   ];
@@ -37,7 +33,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
           });
         },
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(
               icon: Icon(
                 Icons.local_shipping,

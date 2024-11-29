@@ -771,6 +771,7 @@ import 'package:tripmanager/Model/temp_data.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/Widgets/trip_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:tripmanager/main.dart';
 
 class TripsScreen extends StatefulWidget {
   @override
@@ -1112,10 +1113,10 @@ class _TripsScreenState extends State<TripsScreen> {
 
       if (partyReportQuery.docs.isNotEmpty) {
         DocumentSnapshot existingParty = partyReportQuery.docs.first;
-        double currentAmount =
-            double.parse(existingParty['amount'].replaceAll('₹ ', ''));
-        double newAmount = currentAmount +
-            double.parse(amountController.text.replaceAll('₹ ', ''));
+        int currentAmount =
+            int.parse(existingParty['amount'].replaceAll('₹ ', ''));
+        int newAmount = currentAmount +
+            int.parse(amountController.text.replaceAll('₹ ', ''));
 
         await FirebaseFirestore.instance
             .collection('partyreport')
@@ -1138,14 +1139,13 @@ class _TripsScreenState extends State<TripsScreen> {
       selected_Driver = null;
       selectedVehicleNumber = null;
 
-      Navigator.pop(context); // Close the modal
+      Navigator.pop(context);
 
       showDialog(
         context: context,
         builder: (BuildContext context) {
           Future.delayed(Duration(seconds: 2), () {
-            Navigator.of(context)
-                .pop(true); // Close the success dialog after 2 seconds
+            Navigator.of(context).pop(true);
           });
           return AlertDialog(
             content: Text('Trip successfully added!'),
@@ -1169,7 +1169,6 @@ class _TripsScreenState extends State<TripsScreen> {
     }
   }
 
-  // Method to filter trips based on search query
   List<Map<String, dynamic>> _filterTrips(List<Map<String, dynamic>> trips) {
     final searchQuery = searchController.text.toLowerCase();
     return trips.where((trip) {
