@@ -25,18 +25,55 @@ class _TripDetailScreenState extends State<TripDetailScreen>
   }
 
   Future<void> deleteTrip(String tripId) async {
-    try {
-      await FirebaseFirestore.instance.collection('trips').doc(tripId).delete();
+  try {
+    // Fetch the trip details to get driverName, tripAmount, and date
+    final tripSnapshot = await FirebaseFirestore.instance.collection('trips').doc(tripId).get();
 
-      print('Trip successfully deleted');
-    } on FirebaseException catch (e) {
-      print('Error deleting trip: ${e.message}');
-      throw Exception('Failed to delete trip: ${e.message}');
-    } catch (e) {
-      print('Unexpected error deleting trip: $e');
-      throw Exception('An unexpected error occurred while deleting the trip');
+    if (!tripSnapshot.exists) {
+      print('Trip not found');
+      return;
     }
+
+    final tripData = tripSnapshot.data()!;
+    final driverName = tripData['driverName'];
+    final tripAmount = tripData['amount'];
+    final date = tripData['date'];
+
+    // Delete the trip from the 'trips' collection
+    await FirebaseFirestore.instance.collection('trips').doc(tripId).delete();
+
+    // Calculate 20% of the trip amount as a string
+    int tripAmountInt = int.parse(tripAmount);
+    String transactionAmount = (tripAmountInt * 0.2).toInt().toString();
+
+    // Query the 'drivertransactions' collection to find the matching transaction
+    final driverTransactionQuery = await FirebaseFirestore.instance
+        .collection('drivertransactions')
+        .where('driverName', isEqualTo: driverName)
+        .where('amount', isEqualTo: transactionAmount)
+        .where('date', isEqualTo: date)
+        .where('description', isEqualTo: 'Bhata') // Ensure description is 'Bhata'
+        .get();
+
+    // Delete all matching transactions
+    for (var doc in driverTransactionQuery.docs) {
+      await FirebaseFirestore.instance
+          .collection('drivertransactions')
+          .doc(doc.id)
+          .delete();
+    }
+
+    print('Trip and associated driver transaction(s) successfully deleted');
+  } on FirebaseException catch (e) {
+    print('Error deleting trip or driver transaction: ${e.message}');
+    throw Exception('Failed to delete trip or transaction: ${e.message}');
+  } catch (e) {
+    print('Unexpected error deleting trip: $e');
+    throw Exception('An unexpected error occurred while deleting the trip');
   }
+}
+
+
 
   // // Optional: Function to delete a trip with additional checks or logging
   // Future<bool> safeDeleteTrip(String tripId, {String? userId}) async {
