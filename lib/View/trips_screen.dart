@@ -1141,7 +1141,7 @@ class _TripsScreenState extends State<TripsScreen> {
       "date":
           "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
       "description": "Bhata",
-      "type": "got",
+      "type": "gave",
       "fromtrip": "true", // Correct field name and string value
       "createdAt": FieldValue.serverTimestamp(),
     };
