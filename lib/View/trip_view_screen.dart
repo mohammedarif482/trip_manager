@@ -36,8 +36,9 @@ class _TripDetailScreenState extends State<TripDetailScreen>
 
     final tripData = tripSnapshot.data()!;
     final driverName = tripData['driverName'];
-    final tripAmount = tripData['amount'];
+    final tripAmount = tripData['amount']; // This is a string
     final date = tripData['date'];
+    final partyName = tripData['partyName']; // Assuming 'partyName' is stored in the trip document
 
     // Delete the trip from the 'trips' collection
     await FirebaseFirestore.instance.collection('trips').doc(tripId).delete();
@@ -63,6 +64,34 @@ class _TripDetailScreenState extends State<TripDetailScreen>
           .delete();
     }
 
+    // Now update the 'partyreport' collection
+    final partyReportQuery = await FirebaseFirestore.instance
+        .collection('partyreport')
+        .where('partyName', isEqualTo: partyName)
+        .get();
+
+    if (partyReportQuery.docs.isNotEmpty) {
+      // Fetch the first matching party report (assuming partyName is unique in partyreport collection)
+      final partyReportDoc = partyReportQuery.docs.first;
+      String currentAmountString = partyReportDoc['amount']; // Amount is stored as a string
+
+      // Subtract the trip amount from the current amount
+      int currentAmountInt = int.parse(currentAmountString);
+      int newAmount = currentAmountInt - tripAmountInt;
+
+      // Update the party report with the new amount
+      await FirebaseFirestore.instance
+          .collection('partyreport')
+          .doc(partyReportDoc.id)
+          .update({
+        'amount': newAmount.toString(),
+      });
+
+      print('Party report updated with new amount');
+    } else {
+      print('No matching party report found for partyName: $partyName');
+    }
+
     print('Trip and associated driver transaction(s) successfully deleted');
   } on FirebaseException catch (e) {
     print('Error deleting trip or driver transaction: ${e.message}');
@@ -72,6 +101,7 @@ class _TripDetailScreenState extends State<TripDetailScreen>
     throw Exception('An unexpected error occurred while deleting the trip');
   }
 }
+
 
 
 
