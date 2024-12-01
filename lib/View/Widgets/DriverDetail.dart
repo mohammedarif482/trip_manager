@@ -262,7 +262,7 @@ Future<void> _showSettleDialog(BuildContext context) async {
                       DateTime? picked = await showDatePicker(
                         context: context,
                         initialDate: selectedDate,
-                        firstDate: DateTime(2000),
+                        firstDate: DateTime(2020),
                         lastDate: DateTime(2101),
                       );
                       if (picked != null && picked != selectedDate) {

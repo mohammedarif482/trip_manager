@@ -358,311 +358,319 @@ class _PartyDetailState extends State<PartyDetail> {
   }
 
   Widget _buildFinancialDetails() {
-  final List<Map<String, dynamic>> advanceData =
-      List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
-  final List<Map<String, dynamic>> paymentData =
-      List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
+    final List<Map<String, dynamic>> advanceData =
+        List<Map<String, dynamic>>.from(widget.tripData['advances'] ?? []);
+    final List<Map<String, dynamic>> paymentData =
+        List<Map<String, dynamic>>.from(widget.tripData['payments'] ?? []);
 
-  return Container(
-    decoration: BoxDecoration(
-      border: Border.all(color: Colors.grey.shade300),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildAmountRow(
-              'Freight Amount', '₹ ${widget.tripData['amount']}', true),
-          const SizedBox(height: 4),
-          if (advanceData.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Advances:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: _showAdvanceDialog, // Function to add advances
-                      tooltip: 'Add Advance',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: Colors.grey.shade100,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: advanceData.map((advance) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('₹ ${advance['amount']}',
-                                    style: TextStyle(fontSize: 16)),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteAdvance(advance),
-                                  tooltip: 'Delete Advance',
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('${advance['date']}',
-                                    style: TextStyle(color: Colors.grey)),
-                                Text('${advance['paymentMethod']}',
-                                    style: TextStyle(color: Colors.grey)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('No advances added yet.',
-                    style: TextStyle(color: Colors.grey)),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _showAdvanceDialog,
-                  tooltip: 'Add Advance',
-                ),
-              ],
-            ),
-          const SizedBox(height: 8),
-          const Divider(height: 32),
-          const SizedBox(height: 16),
-          if (paymentData.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Payments:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: _showPaymentDialog, // Function to add payments
-                      tooltip: 'Add Payment',
-                      
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: Colors.grey.shade100,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: paymentData.map((payment) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('₹ ${payment['amount']}',
-                                    style: TextStyle(fontSize: 16)),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deletePayment(payment),
-                                  tooltip: 'Delete Payment',
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('${payment['date']}',
-                                    style: TextStyle(color: Colors.grey)),
-                                Text('${payment['paymentMethod']}',
-                                    style: TextStyle(color: Colors.grey)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            )
-          else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('No payments made yet.',
-                    style: TextStyle(color: Colors.grey)),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: _showPaymentDialog,
-                  tooltip: 'Add Payment',
-                ),
-              ],
-            ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Pending Balance',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              Text(
-                '₹ $pendingBalance',
-                style:
-                    TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: _showAddChargesDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Note'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryColor,
-                ),
-              ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PartyStatement(tripId: widget.tripId),  // Passing dynamic tripId
-                    ),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.primaryColor),
-                ),
-                child: const Text('Show Statement'),
-              ),
-
-            ],
-          ),
-        ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
       ),
-    ),
-  );
-}
-
-
-
-Future<void> _deleteAdvance(Map<String, dynamic> advance) async {
-  try {
-    // Remove from the 'advances' field in the 'trips' collection
-    final tripRef = FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
-    await tripRef.update({
-      'advances': FieldValue.arrayRemove([advance])
-    });
-
-    // Check and remove from the 'drivertransactions' collection
-    final driverTransactionsRef = FirebaseFirestore.instance.collection('drivertransactions');
-    final querySnapshot = await driverTransactionsRef
-        .where('description', isEqualTo: 'Trip advance')
-        .where('date', isEqualTo: advance['date'])
-        .where('amount', isEqualTo: advance['amount'])
-        .where('paymentMethod', isEqualTo: advance['paymentMethod'])
-        .get();
-
-    for (var doc in querySnapshot.docs) {
-      await doc.reference.delete();
-    }
-
-    // Update the local list and UI
-    setState(() {
-      // Remove the deleted advance from the displayed list
-      widget.tripData['advances'].remove(advance);  // Update the tripData in widget
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Advance deleted successfully.')),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAmountRow(
+                'Freight Amount', '₹ ${widget.tripData['amount']}', true),
+            const SizedBox(height: 4),
+            if (advanceData.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Advances:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed:
+                            _showAdvanceDialog, // Function to add advances
+                        tooltip: 'Add Advance',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.grey.shade100,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: advanceData.map((advance) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('₹ ${advance['amount']}',
+                                      style: TextStyle(fontSize: 16)),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteAdvance(advance),
+                                    tooltip: 'Delete Advance',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('${advance['date']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                  Text('${advance['paymentMethod']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('No advances added yet.',
+                      style: TextStyle(color: Colors.grey)),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _showAdvanceDialog,
+                    tooltip: 'Add Advance',
+                  ),
+                ],
+              ),
+            const SizedBox(height: 8),
+            const Divider(height: 32),
+            const SizedBox(height: 16),
+            if (paymentData.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Payments:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed:
+                            _showPaymentDialog, // Function to add payments
+                        tooltip: 'Add Payment',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.grey.shade100,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: paymentData.map((payment) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('₹ ${payment['amount']}',
+                                      style: TextStyle(fontSize: 16)),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deletePayment(payment),
+                                    tooltip: 'Delete Payment',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('${payment['date']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                  Text('${payment['paymentMethod']}',
+                                      style: TextStyle(color: Colors.grey)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('No payments made yet.',
+                      style: TextStyle(color: Colors.grey)),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _showPaymentDialog,
+                    tooltip: 'Add Payment',
+                  ),
+                ],
+              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Pending Balance',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                Text(
+                  '₹ $pendingBalance',
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: _showAddChargesDialog,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Note'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primaryColor,
+                  ),
+                ),
+                const Spacer(),
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PartyStatement(
+                            tripId: widget.tripId), // Passing dynamic tripId
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primaryColor),
+                  ),
+                  child: const Text('Show Statement'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
-  } catch (error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Failed to delete advance.')),
-    );
-    print("Error deleting advance: $error");  // Optionally log the error for debugging
   }
-}
 
+  Future<void> _deleteAdvance(Map<String, dynamic> advance) async {
+    try {
+      // Remove from the 'advances' field in the 'trips' collection
+      final tripRef =
+          FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
+      await tripRef.update({
+        'advances': FieldValue.arrayRemove([advance])
+      });
 
-Future<void> _deletePayment(Map<String, dynamic> payment) async {
-  try {
-    // Remove from the 'advances' field in the 'trips' collection
-    final tripRef = FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
-    await tripRef.update({
-      'payments': FieldValue.arrayRemove([payment])
-    });
+      // Check and remove from the 'drivertransactions' collection
+      final driverTransactionsRef =
+          FirebaseFirestore.instance.collection('drivertransactions');
+      final querySnapshot = await driverTransactionsRef
+          .where('description', isEqualTo: 'Trip advance')
+          .where('date', isEqualTo: advance['date'])
+          .where('amount', isEqualTo: advance['amount'])
+          .where('paymentMethod', isEqualTo: advance['paymentMethod'])
+          .get();
 
-    // Check and remove from the 'drivertransactions' collection
-    final driverTransactionsRef = FirebaseFirestore.instance.collection('drivertransactions');
-    final querySnapshot = await driverTransactionsRef
-        .where('description', isEqualTo: 'Trip payment')
-        .where('date', isEqualTo: payment['date'])
-        .where('amount', isEqualTo: payment['amount'])
-        .where('paymentMethod', isEqualTo: payment['paymentMethod'])
-        .get();
+      for (var doc in querySnapshot.docs) {
+        await doc.reference.delete();
+      }
 
-    for (var doc in querySnapshot.docs) {
-      await doc.reference.delete();
+      // Update the local list and UI
+      setState(() {
+        // Remove the deleted advance from the displayed list
+        widget.tripData['advances']
+            .remove(advance); // Update the tripData in widget
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Advance deleted successfully.')),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete advance.')),
+      );
+      print(
+          "Error deleting advance: $error"); // Optionally log the error for debugging
     }
-
-    // Update the local list and UI
-    setState(() {
-      // Remove the deleted advance from the displayed list
-      widget.tripData['payments'].remove(payment);  // Update the tripData in widget
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Payment deleted successfully.')),
-    );
-  } catch (error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Failed to delete Payment.')),
-    );
-    print("Error deleting Payment: $error");  // Optionally log the error for debugging
   }
-}
 
+  Future<void> _deletePayment(Map<String, dynamic> payment) async {
+    try {
+      // Remove from the 'advances' field in the 'trips' collection
+      final tripRef =
+          FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
+      await tripRef.update({
+        'payments': FieldValue.arrayRemove([payment])
+      });
 
+      // Check and remove from the 'drivertransactions' collection
+      final driverTransactionsRef =
+          FirebaseFirestore.instance.collection('drivertransactions');
+      final querySnapshot = await driverTransactionsRef
+          .where('description', isEqualTo: 'Trip payment')
+          .where('date', isEqualTo: payment['date'])
+          .where('amount', isEqualTo: payment['amount'])
+          .where('paymentMethod', isEqualTo: payment['paymentMethod'])
+          .get();
+
+      for (var doc in querySnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Update the local list and UI
+      setState(() {
+        // Remove the deleted advance from the displayed list
+        widget.tripData['payments']
+            .remove(payment); // Update the tripData in widget
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment deleted successfully.')),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete Payment.')),
+      );
+      print(
+          "Error deleting Payment: $error"); // Optionally log the error for debugging
+    }
+  }
 
   Widget _buildAddLoadButton() {
     return InkWell(
@@ -813,31 +821,155 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
   }
 
   void _showAdvanceDialog() {
-  TextEditingController advanceController = TextEditingController();
-  TextEditingController dateController = TextEditingController();
-  bool isReceivedByDriver = false;
-  String selectedPaymentMethod = 'Cash';
+    TextEditingController advanceController = TextEditingController();
+    TextEditingController dateController = TextEditingController();
+    bool isReceivedByDriver = false;
+    String selectedPaymentMethod = 'Cash';
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (BuildContext context, StateSetter setStateDialog) {
-          return AlertDialog(
-            title: const Text('Add Advance'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setStateDialog) {
+            return AlertDialog(
+              title: const Text('Add Advance'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: advanceController,
+                      decoration: const InputDecoration(
+                          labelText: 'Enter Advance Amount'),
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (value) {
+                        print('Amount field changed: $value');
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Received by Driver'),
+                        Switch(
+                          value: isReceivedByDriver,
+                          onChanged: (bool newValue) {
+                            setStateDialog(() {
+                              isReceivedByDriver = newValue;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButton<String>(
+                      value: selectedPaymentMethod,
+                      onChanged: (String? newValue) {
+                        setStateDialog(() {
+                          selectedPaymentMethod = newValue!;
+                        });
+                      },
+                      items: <String>[
+                        'Cash',
+                        'UPI',
+                        'Credit Card',
+                        'Bank Transfer'
+                      ].map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      isExpanded: true,
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: dateController,
+                      decoration:
+                          const InputDecoration(labelText: 'Select Date'),
+                      readOnly: true, // Prevent typing, show date picker on tap
+                      onTap: () async {
+                        DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2101),
+                        );
+                        if (pickedDate != null) {
+                          String formattedDate =
+                              "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
+                          setStateDialog(() {
+                            dateController.text =
+                                formattedDate; 
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    String enteredAmount = advanceController.text.trim();
+                    String enteredDate = dateController.text.trim();
+
+                    print('Entered Amount: $enteredAmount');
+                    print('Entered Date: $enteredDate');
+
+                    if (enteredAmount.isEmpty || enteredDate.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content:
+                                Text('Please enter a valid amount and date')),
+                      );
+                    } else {
+                      _addAdvanceToFirestore(isReceivedByDriver,
+                          selectedPaymentMethod, enteredDate, enteredAmount);
+                      _fetchAdvanceAmount();
+                      Navigator.of(context)
+                          .pop(); // Close the dialog after adding
+                    }
+                  },
+                  child: const Text('Add Advance'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showPaymentDialog() {
+    bool isReceivedByDriver = false; // Track switch state
+    TextEditingController paymentController =
+        TextEditingController(); // Controller for payment amount field
+    TextEditingController dateController =
+        TextEditingController(); // Controller for date field
+    String selectedPaymentMethod = 'Cash'; // Default payment method
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setStateDialog) {
+            return AlertDialog(
+              title: const Text('Add Payment'),
+              content: Column(
+                mainAxisSize:
+                    MainAxisSize.min, // Adjust size to fit the content
                 children: [
                   TextField(
-                    controller: advanceController,
-                    decoration: const InputDecoration(
-                        labelText: 'Enter Advance Amount'),
-                    keyboardType:
-                        TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (value) {
-                      print('Amount field changed: $value');
-                    },
+                    controller: paymentController,
+                    decoration:
+                        const InputDecoration(labelText: 'Enter Amount'),
+                    keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -853,6 +985,26 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
                         },
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: dateController,
+                    decoration: const InputDecoration(labelText: 'Select Date'),
+                    readOnly: true, // Prevent typing, only allow date picker
+                    onTap: () async {
+                      DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2101),
+                      );
+                      if (pickedDate != null) {
+                        setStateDialog(() {
+                          dateController.text = "${pickedDate.toLocal()}"
+                              .split(' ')[0]; // Format as YYYY-MM-DD
+                        });
+                      }
+                    },
                   ),
                   const SizedBox(height: 10),
                   DropdownButton<String>(
@@ -875,186 +1027,44 @@ Future<void> _deletePayment(Map<String, dynamic> payment) async {
                     }).toList(),
                     isExpanded: true,
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: dateController,
-                    decoration: const InputDecoration(labelText: 'Select Date'),
-                    readOnly: true, // Prevent typing, show date picker on tap
-                    onTap: () async {
-                      DateTime? pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2101),
-                      );
-                      if (pickedDate != null) {
-                        String formattedDate =
-                            "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
-                        setStateDialog(() {
-                          dateController.text =
-                              formattedDate; // Set the formatted date in controller
-                        });
-                      }
-                    },
-                  ),
                 ],
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  String enteredAmount = advanceController.text.trim();
-                  String enteredDate = dateController.text.trim();
-
-                  print('Entered Amount: $enteredAmount');
-                  print('Entered Date: $enteredDate');
-
-                  if (enteredAmount.isEmpty || enteredDate.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content:
-                              Text('Please enter a valid amount and date')),
-                    );
-                  } else {
-                    _addAdvanceToFirestore(isReceivedByDriver,
-                        selectedPaymentMethod, enteredDate, enteredAmount);
-                    _fetchAdvanceAmount();
-                    Navigator.of(context).pop(); // Close the dialog after adding
-                  }
-                },
-                child: const Text('Add Advance'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-
-  void _showPaymentDialog() {
-  bool isReceivedByDriver = false; // Track switch state
-  TextEditingController paymentController =
-      TextEditingController(); // Controller for payment amount field
-  TextEditingController dateController =
-      TextEditingController(); // Controller for date field
-  String selectedPaymentMethod = 'Cash'; // Default payment method
-
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (BuildContext context, StateSetter setStateDialog) {
-          return AlertDialog(
-            title: const Text('Add Payment'),
-            content: Column(
-              mainAxisSize:
-                  MainAxisSize.min, // Adjust size to fit the content
-              children: [
-                TextField(
-                  controller: paymentController,
-                  decoration: const InputDecoration(labelText: 'Enter Amount'),
-                  keyboardType: TextInputType.number,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Received by Driver'),
-                    Switch(
-                      value: isReceivedByDriver,
-                      onChanged: (bool newValue) {
-                        setStateDialog(() {
-                          isReceivedByDriver = newValue;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: dateController,
-                  decoration: const InputDecoration(labelText: 'Select Date'),
-                  readOnly: true, // Prevent typing, only allow date picker
-                  onTap: () async {
-                    DateTime? pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2101),
-                    );
-                    if (pickedDate != null) {
-                      setStateDialog(() {
-                        dateController.text = "${pickedDate.toLocal()}"
-                            .split(' ')[0]; // Format as YYYY-MM-DD
-                      });
+                TextButton(
+                  onPressed: () {
+                    String enteredAmount = paymentController.text.trim();
+                    String enteredDate = dateController.text.trim();
+
+                    if (enteredAmount.isEmpty || enteredDate.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content:
+                                Text('Please enter a valid amount and date')),
+                      );
+                    } else {
+                      _addPaymentToFirestore(
+                        isReceivedByDriver,
+                        selectedPaymentMethod,
+                        enteredDate,
+                        enteredAmount,
+                      );
+                      Navigator.of(context)
+                          .pop(); // Close the dialog after adding
                     }
                   },
-                ),
-                const SizedBox(height: 10),
-                DropdownButton<String>(
-                  value: selectedPaymentMethod,
-                  onChanged: (String? newValue) {
-                    setStateDialog(() {
-                      selectedPaymentMethod = newValue!;
-                    });
-                  },
-                  items: <String>[
-                    'Cash',
-                    'UPI',
-                    'Credit Card',
-                    'Bank Transfer'
-                  ].map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  isExpanded: true,
+                  child: const Text('Add Payment'),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  String enteredAmount = paymentController.text.trim();
-                  String enteredDate = dateController.text.trim();
-
-                  if (enteredAmount.isEmpty || enteredDate.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content:
-                              Text('Please enter a valid amount and date')),
-                    );
-                  } else {
-                    _addPaymentToFirestore(
-                      isReceivedByDriver,
-                      selectedPaymentMethod,
-                      enteredDate,
-                      enteredAmount,
-                    );
-                    Navigator.of(context).pop(); // Close the dialog after adding
-                  }
-                },
-                child: const Text('Add Payment'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
+            );
+          },
+        );
+      },
+    );
+  }
 
   void _addAdvanceToFirestore(
       bool isReceivedByDriver,

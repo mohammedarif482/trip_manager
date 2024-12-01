@@ -943,8 +943,8 @@ class _TripsScreenState extends State<TripsScreen> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime.now(),
+       initialDate: selectedDate,
+                      firstDate: DateTime(2020),
       lastDate: DateTime(2025),
     );
     if (picked != null && picked != selectedDate) {
@@ -1072,125 +1072,125 @@ class _TripsScreenState extends State<TripsScreen> {
   // }
 
   void _addNewTrip() async {
-  // Check if any field is empty or null
-  if (selected_Driver == null ||
-      selectedVehicleNumber == null ||
-      selectedPartyName == null ||
-      fromLocationController.text.isEmpty ||
-      toLocationController.text.isEmpty ||
-      amountController.text.isEmpty) {
-    // Show a dialog if any field is empty
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Text('Please fill all fields'),
-        );
-      },
-    );
-    return;
-  }
-
-  final newTrip = {
-    "partyName": selectedPartyName.toString(),
-    "driverName": selected_Driver.toString(),
-    "vehicleNumber": selectedVehicleNumber.toString(),
-    "fromLocation": fromLocationController.text,
-    "toLocation": toLocationController.text,
-    "date":
-        "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
-    "status": "Trip Started",
-    "amount": amountController.text, // Stored as entered
-    "createdAt": FieldValue.serverTimestamp(),
-  };
-
-  try {
-    await FirebaseFirestore.instance.collection('trips').add(newTrip);
-
-    // Update partyreport collection
-    final partyReportQuery = await FirebaseFirestore.instance
-        .collection('partyreport')
-        .where('partyName', isEqualTo: selectedPartyName)
-        .get();
-
-    if (partyReportQuery.docs.isNotEmpty) {
-      DocumentSnapshot existingParty = partyReportQuery.docs.first;
-      int currentAmount = int.parse(existingParty['amount']);
-      int newAmount = currentAmount + int.parse(amountController.text);
-
-      await FirebaseFirestore.instance
-          .collection('partyreport')
-          .doc(existingParty.id)
-          .update({
-        'amount': newAmount.toString(),
-      });
-    } else {
-      await FirebaseFirestore.instance.collection('partyreport').add({
-        'partyName': selectedPartyName.toString(),
-        'amount': amountController.text,
-      });
+    // Check if any field is empty or null
+    if (selected_Driver == null ||
+        selectedVehicleNumber == null ||
+        selectedPartyName == null ||
+        fromLocationController.text.isEmpty ||
+        toLocationController.text.isEmpty ||
+        amountController.text.isEmpty) {
+      // Show a dialog if any field is empty
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Text('Please fill all fields'),
+          );
+        },
+      );
+      return;
     }
 
-    // Add to drivertransactions collection
-    int tripAmount = int.parse(amountController.text); // Parse as integer
-    int driverTransactionAmount = (tripAmount * 0.2).round(); // 20% of trip amount
-
-    final driverTransaction = {
+    final newTrip = {
+      "partyName": selectedPartyName.toString(),
       "driverName": selected_Driver.toString(),
-      "amount": driverTransactionAmount.toString(), // Stored as plain numeric string
+      "vehicleNumber": selectedVehicleNumber.toString(),
+      "fromLocation": fromLocationController.text,
+      "toLocation": toLocationController.text,
       "date":
           "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
-      "description": "Bhata",
-      "type": "gave",
-      "fromtrip": "true", // Correct field name and string value
+      "status": "Trip Started",
+      "amount": amountController.text, // Stored as entered
       "createdAt": FieldValue.serverTimestamp(),
     };
 
-    await FirebaseFirestore.instance.collection('drivertransactions').add(driverTransaction);
+    try {
+      await FirebaseFirestore.instance.collection('trips').add(newTrip);
 
-    // Clear fields and reset selections
-    vehicleNumberController.clear();
-    fromLocationController.clear();
-    toLocationController.clear();
-    amountController.clear();
-    selectedPartyName = null;
-    selected_Driver = null;
-    selectedVehicleNumber = null;
+      // Update partyreport collection
+      final partyReportQuery = await FirebaseFirestore.instance
+          .collection('partyreport')
+          .where('partyName', isEqualTo: selectedPartyName)
+          .get();
 
-    Navigator.pop(context);
+      if (partyReportQuery.docs.isNotEmpty) {
+        DocumentSnapshot existingParty = partyReportQuery.docs.first;
+        int currentAmount = int.parse(existingParty['amount']);
+        int newAmount = currentAmount + int.parse(amountController.text);
 
-    // Show success dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        Future.delayed(Duration(seconds: 2), () {
-          Navigator.of(context).pop(true);
+        await FirebaseFirestore.instance
+            .collection('partyreport')
+            .doc(existingParty.id)
+            .update({
+          'amount': newAmount.toString(),
         });
-        return AlertDialog(
-          content: Text('Trip successfully added!'),
-        );
-      },
-    );
-  } catch (e) {
-    print("Error adding trip: $e");
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        Future.delayed(Duration(seconds: 2), () {
-          Navigator.of(context).pop(true); // Close the error dialog after 2 seconds
+      } else {
+        await FirebaseFirestore.instance.collection('partyreport').add({
+          'partyName': selectedPartyName.toString(),
+          'amount': amountController.text,
         });
-        return AlertDialog(
-          content: Text('Failed to add trip'),
-        );
-      },
-    );
+      }
+
+      // Add to drivertransactions collection
+      int tripAmount = int.parse(amountController.text); // Parse as integer
+      int driverTransactionAmount =
+          (tripAmount * 0.2).round(); // 20% of trip amount
+
+      final driverTransaction = {
+        "driverName": selected_Driver.toString(),
+        "amount": driverTransactionAmount
+            .toString(), // Stored as plain numeric string
+        "date":
+            "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
+        "description": "Bhata",
+        "type": "gave",
+        "fromtrip": "true", // Correct field name and string value
+        "createdAt": FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('drivertransactions')
+          .add(driverTransaction);
+
+      // Clear fields and reset selections
+      vehicleNumberController.clear();
+      fromLocationController.clear();
+      toLocationController.clear();
+      amountController.clear();
+      selectedPartyName = null;
+      selected_Driver = null;
+      selectedVehicleNumber = null;
+
+      Navigator.pop(context);
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          Future.delayed(Duration(seconds: 2), () {
+            Navigator.of(context).pop(true);
+          });
+          return AlertDialog(
+            content: Text('Trip successfully added!'),
+          );
+        },
+      );
+    } catch (e) {
+      print("Error adding trip: $e");
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          Future.delayed(Duration(seconds: 2), () {
+            Navigator.of(context)
+                .pop(true); // Close the error dialog after 2 seconds
+          });
+          return AlertDialog(
+            content: Text('Failed to add trip'),
+          );
+        },
+      );
+    }
   }
-}
-
-
-
-
-
 
   List<Map<String, dynamic>> _filterTrips(List<Map<String, dynamic>> trips) {
     final searchQuery = searchController.text.toLowerCase();
@@ -1436,7 +1436,6 @@ class _TripsScreenState extends State<TripsScreen> {
                 ),
                 SizedBox(height: 16),
 
-                // DropdownButton for selecting driver
                 DropdownButtonFormField<String>(
                   value: selected_Driver,
                   hint: Text('Select Driver'),
@@ -1458,7 +1457,6 @@ class _TripsScreenState extends State<TripsScreen> {
                 ),
                 SizedBox(height: 16),
 
-                // DropdownButton for selecting vehicle number from Firestore
                 DropdownButtonFormField<String>(
                   value: selectedVehicleNumber,
                   hint: Text('Select Vehicle Number'),
@@ -1481,7 +1479,6 @@ class _TripsScreenState extends State<TripsScreen> {
                 ),
                 SizedBox(height: 16),
 
-                // From Location TextField
                 TextField(
                   controller: fromLocationController,
                   decoration: InputDecoration(
@@ -1491,7 +1488,6 @@ class _TripsScreenState extends State<TripsScreen> {
                 ),
                 SizedBox(height: 16),
 
-                // To Location TextField
                 TextField(
                   controller: toLocationController,
                   decoration: InputDecoration(
@@ -1500,8 +1496,6 @@ class _TripsScreenState extends State<TripsScreen> {
                   ),
                 ),
                 SizedBox(height: 16),
-
-                // Amount TextField
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
