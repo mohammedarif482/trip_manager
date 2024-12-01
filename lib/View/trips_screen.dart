@@ -943,8 +943,8 @@ class _TripsScreenState extends State<TripsScreen> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-       initialDate: selectedDate,
-                      firstDate: DateTime(2020),
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
       lastDate: DateTime(2025),
     );
     if (picked != null && picked != selectedDate) {
@@ -1139,9 +1139,10 @@ class _TripsScreenState extends State<TripsScreen> {
       final driverTransaction = {
         "driverName": selected_Driver.toString(),
         "amount": driverTransactionAmount
-            .toString(), // Stored as plain numeric string
+            .toString(), // Stored as plain numeric string"${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}"
+
         "date":
-            "${selectedDate.day} ${_getMonth(selectedDate.month)} ${selectedDate.year}",
+            "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}",
         "description": "Bhata",
         "type": "gave",
         "fromtrip": "true", // Correct field name and string value

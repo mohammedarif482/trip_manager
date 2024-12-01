@@ -44,6 +44,7 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
 
       String dateStr = data['date'] ?? '';
       DateTime? date = DateTime.tryParse(dateStr);
+      
       if (date == null) continue;
 
       String monthKey = DateFormat('yyyy-MM').format(date);
@@ -68,11 +69,9 @@ class _DriverStatementPageState extends State<DriverStatementPage> {
     List<Map<String, dynamic>> finalTransactions = [];
     double monthlyBalance = 0.0;
 
-    // Process transactions row by row
     for (var transaction in fetchedTransactions) {
       String monthKey = transaction['month'];
 
-      // Check if a new month has started
       if (lastMonth != null && lastMonth != monthKey) {
         // Add a monthly balance row for the previous month
         finalTransactions.add({
