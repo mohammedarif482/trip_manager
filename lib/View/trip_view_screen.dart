@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,174 +18,171 @@ class TripDetailScreen extends StatefulWidget {
 class _TripDetailScreenState extends State<TripDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool isDriver = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _checkUserRole();  // Check if the current user is a driver
   }
 
-  Future<void> deleteTrip(String tripId) async {
+  Future<void> _checkUserRole() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (userDoc.exists && userDoc.data() != null) {
+          setState(() {
+            isDriver = userDoc.data()!['isDriver'] ?? false;
+          });
+        }
+      } catch (e) {
+        print('Error fetching user data: $e');
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchTripDetails() async {
   try {
-    // Fetch the trip details to get driverName, amount, and other related fields
-    final tripSnapshot = await FirebaseFirestore.instance.collection('trips').doc(tripId).get();
+    final tripSnapshot = await FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId) // Use the tripId passed to the widget
+        .get();
 
     if (!tripSnapshot.exists) {
-      print('Trip not found');
-      return;
+      throw Exception('Trip not found');
     }
 
-    final tripData = tripSnapshot.data()!;
-    final driverName = tripData['driverName'];
-    final advances = tripData['advances'] ?? [];
-    final payments = tripData['payments'] ?? [];
-    final partyName = tripData['partyName'];
-    final tripAmount = tripData['amount']; // This is a string
-
-    // Delete the trip from the 'trips' collection
-    await FirebaseFirestore.instance.collection('trips').doc(tripId).delete();
-
-    // Delete associated advances from drivertransactions
-    for (var advance in advances) {
-      if (advance['receivedByDriver'] == true) {
-        final driverTransactionQuery = await FirebaseFirestore.instance
-            .collection('drivertransactions')
-            .where('driverName', isEqualTo: driverName)
-            .where('amount', isEqualTo: advance['amount'])
-            .where('date', isEqualTo: advance['date'])
-            .where('paymentMethod', isEqualTo: advance['paymentMethod'])
-            .where('description', isEqualTo: 'Trip advance')
-            .get();
-
-        for (var doc in driverTransactionQuery.docs) {
-          await FirebaseFirestore.instance
-              .collection('drivertransactions')
-              .doc(doc.id)
-              .delete();
-        }
-      }
-    }
-
-    // Delete associated payments from drivertransactions
-    for (var payment in payments) {
-      if (payment['receivedByDriver'] == true) {
-        final driverTransactionQuery = await FirebaseFirestore.instance
-            .collection('drivertransactions')
-            .where('driverName', isEqualTo: driverName)
-            .where('amount', isEqualTo: payment['amount'])
-            .where('date', isEqualTo: payment['date'])
-            .where('paymentMethod', isEqualTo: payment['paymentMethod'])
-            .where('description', isEqualTo: 'Trip payment')
-            .get();
-
-        for (var doc in driverTransactionQuery.docs) {
-          await FirebaseFirestore.instance
-              .collection('drivertransactions')
-              .doc(doc.id)
-              .delete();
-        }
-      }
-    }
-
-    // Calculate 20% of the trip amount as a string
-    int tripAmountInt = int.parse(tripAmount);
-    String transactionAmount = (tripAmountInt * 0.2).toInt().toString();
-
-    // Delete the associated Bhata transaction
-    final bhataTransactionQuery = await FirebaseFirestore.instance
-        .collection('drivertransactions')
-        .where('driverName', isEqualTo: driverName)
-        .where('amount', isEqualTo: transactionAmount)
-        .where('description', isEqualTo: 'Bhata')
-        .get();
-
-    for (var doc in bhataTransactionQuery.docs) {
-      await FirebaseFirestore.instance
-          .collection('drivertransactions')
-          .doc(doc.id)
-          .delete();
-    }
-
-    // Update the 'partyreport' collection
-    final partyReportQuery = await FirebaseFirestore.instance
-        .collection('partyreport')
-        .where('partyName', isEqualTo: partyName)
-        .get();
-
-    if (partyReportQuery.docs.isNotEmpty) {
-      final partyReportDoc = partyReportQuery.docs.first;
-      String currentAmountString = partyReportDoc['amount'];
-
-      int currentAmountInt = int.parse(currentAmountString);
-      int newAmount = currentAmountInt - tripAmountInt;
-
-      await FirebaseFirestore.instance
-          .collection('partyreport')
-          .doc(partyReportDoc.id)
-          .update({
-        'amount': newAmount.toString(),
-      });
-
-      print('Party report updated with new amount');
-    } else {
-      print('No matching party report found for partyName: $partyName');
-    }
-
-    print('Trip and associated transactions successfully deleted');
-  } on FirebaseException catch (e) {
-    print('Error deleting trip or associated transactions: ${e.message}');
-    throw Exception('Failed to delete trip or transactions: ${e.message}');
+    return tripSnapshot.data()!;
   } catch (e) {
-    print('Unexpected error deleting trip: $e');
-    throw Exception('An unexpected error occurred while deleting the trip');
+    print('Error fetching trip details: $e');
+    throw Exception('Failed to load trip details: $e');
   }
 }
 
 
+  Future<void> deleteTrip(String tripId) async {
+    // Prevent deletion if the user is a driver
+    if (isDriver) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Drivers are not allowed to delete trips'),
+      ));
+      return;
+    }
 
+    try {
+      final tripSnapshot = await FirebaseFirestore.instance.collection('trips').doc(tripId).get();
+      if (!tripSnapshot.exists) {
+        print('Trip not found');
+        return;
+      }
 
+      final tripData = tripSnapshot.data()!;
+      final driverName = tripData['driverName'];
+      final advances = tripData['advances'] ?? [];
+      final payments = tripData['payments'] ?? [];
+      final partyName = tripData['partyName'];
+      final tripAmount = tripData['amount']; // This is a string
 
+      await FirebaseFirestore.instance.collection('trips').doc(tripId).delete();
 
+      for (var advance in advances) {
+        if (advance['receivedByDriver'] == true) {
+          final driverTransactionQuery = await FirebaseFirestore.instance
+              .collection('drivertransactions')
+              .where('driverName', isEqualTo: driverName)
+              .where('amount', isEqualTo: advance['amount'])
+              .where('date', isEqualTo: advance['date'])
+              .where('paymentMethod', isEqualTo: advance['paymentMethod'])
+              .where('description', isEqualTo: 'Trip advance')
+              .get();
 
-  // // Optional: Function to delete a trip with additional checks or logging
-  // Future<bool> safeDeleteTrip(String tripId, {String? userId}) async {
-  //   try {
-  //     // Optional: Add additional security check if needed
-  //     if (userId != null) {
-  //       // Verify the trip belongs to the current user before deletion
-  //       DocumentSnapshot tripDoc = await _firestore
-  //           .collection('trips')
-  //           .doc(tripId)
-  //           .get();
+          for (var doc in driverTransactionQuery.docs) {
+            await FirebaseFirestore.instance
+                .collection('drivertransactions')
+                .doc(doc.id)
+                .delete();
+          }
+        }
+      }
 
-  //       if (tripDoc.exists) {
-  //         // Assuming the trip document has a 'userId' field
-  //         if (tripDoc.get('userId') != userId) {
-  //           print('Unauthorized deletion attempt');
-  //           return false;
-  //         }
-  //       }
-  //     }
+      for (var payment in payments) {
+        if (payment['receivedByDriver'] == true) {
+          final driverTransactionQuery = await FirebaseFirestore.instance
+              .collection('drivertransactions')
+              .where('driverName', isEqualTo: driverName)
+              .where('amount', isEqualTo: payment['amount'])
+              .where('date', isEqualTo: payment['date'])
+              .where('paymentMethod', isEqualTo: payment['paymentMethod'])
+              .where('description', isEqualTo: 'Trip payment')
+              .get();
 
-  //     // Perform the deletion
-  //     await _firestore.collection('trips').doc(tripId).delete();
+          for (var doc in driverTransactionQuery.docs) {
+            await FirebaseFirestore.instance
+                .collection('drivertransactions')
+                .doc(doc.id)
+                .delete();
+          }
+        }
+      }
 
-  //     return true;
-  //   } catch (e) {
-  //     print('Error in safe delete trip: $e');
-  //     return false;
-  //   }
-  // }
+      int tripAmountInt = int.parse(tripAmount);
+      String transactionAmount = (tripAmountInt * 0.2).toInt().toString();
 
-  Future<Map<String, dynamic>> _fetchTripDetails() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('trips')
-        .doc(widget.tripId)
-        .get();
-    return doc.data() as Map<String, dynamic>;
+      final bhataTransactionQuery = await FirebaseFirestore.instance
+          .collection('drivertransactions')
+          .where('driverName', isEqualTo: driverName)
+          .where('amount', isEqualTo: transactionAmount)
+          .where('description', isEqualTo: 'Bhata')
+          .get();
+
+      for (var doc in bhataTransactionQuery.docs) {
+        await FirebaseFirestore.instance
+            .collection('drivertransactions')
+            .doc(doc.id)
+            .delete();
+      }
+
+      final partyReportQuery = await FirebaseFirestore.instance
+          .collection('partyreport')
+          .where('partyName', isEqualTo: partyName)
+          .get();
+
+      if (partyReportQuery.docs.isNotEmpty) {
+        final partyReportDoc = partyReportQuery.docs.first;
+        String currentAmountString = partyReportDoc['amount'];
+
+        int currentAmountInt = int.parse(currentAmountString);
+        int newAmount = currentAmountInt - tripAmountInt;
+
+        await FirebaseFirestore.instance
+            .collection('partyreport')
+            .doc(partyReportDoc.id)
+            .update({
+          'amount': newAmount.toString(),
+        });
+
+        print('Party report updated with new amount');
+      } else {
+        print('No matching party report found for partyName: $partyName');
+      }
+
+      print('Trip and associated transactions successfully deleted');
+    } catch (e) {
+      print('Error deleting trip or associated transactions: $e');
+      throw Exception('Failed to delete trip or transactions: ${e.toString()}');
+    }
   }
 
   void _showDeleteConfirmationDialog() {
+    if (isDriver) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Drivers cannot delete trips.'),
+      ));
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -205,7 +203,6 @@ class _TripDetailScreenState extends State<TripDetailScreen>
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Delete'),
               onPressed: () {
-                // _handleDelete();
                 deleteTrip(widget.tripId);
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
@@ -225,29 +222,30 @@ class _TripDetailScreenState extends State<TripDetailScreen>
         elevation: 2,
         title: Text('Trip Details'),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (String choice) {
-              if (choice == 'delete') {
-                _showDeleteConfirmationDialog();
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete, color: Colors.black),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Delete',
-                      style: TextStyle(color: AppColors.primaryColor),
-                    ),
-                  ],
+          if (!isDriver) // Hide delete option if the user is a driver
+            PopupMenuButton<String>(
+              onSelected: (String choice) {
+                if (choice == 'delete') {
+                  _showDeleteConfirmationDialog();
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete, color: Colors.black),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Delete',
+                        style: TextStyle(color: AppColors.primaryColor),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-            icon: const Icon(Icons.more_vert),
-          ),
+              ],
+              icon: const Icon(Icons.more_vert),
+            ),
         ],
         bottom: TabBar(
           indicatorColor: AppColors.primaryColor,
@@ -305,3 +303,4 @@ class _TripDetailScreenState extends State<TripDetailScreen>
     );
   }
 }
+
