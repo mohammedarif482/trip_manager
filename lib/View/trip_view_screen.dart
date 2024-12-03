@@ -26,7 +26,7 @@ class _TripDetailScreenState extends State<TripDetailScreen>
 
   Future<void> deleteTrip(String tripId) async {
   try {
-    // Fetch the trip details to get driverName, advances, payments, etc.
+    // Fetch the trip details to get driverName, amount, and other related fields
     final tripSnapshot = await FirebaseFirestore.instance.collection('trips').doc(tripId).get();
 
     if (!tripSnapshot.exists) {
@@ -36,9 +36,9 @@ class _TripDetailScreenState extends State<TripDetailScreen>
 
     final tripData = tripSnapshot.data()!;
     final driverName = tripData['driverName'];
-    final advances = tripData['advances'] ?? []; // Assuming it's a list
-    final payments = tripData['payments'] ?? []; // Assuming it's a list
-    final partyName = tripData['partyName']; // Assuming 'partyName' is stored in the trip document
+    final advances = tripData['advances'] ?? [];
+    final payments = tripData['payments'] ?? [];
+    final partyName = tripData['partyName'];
     final tripAmount = tripData['amount']; // This is a string
 
     // Delete the trip from the 'trips' collection
@@ -56,7 +56,6 @@ class _TripDetailScreenState extends State<TripDetailScreen>
             .where('description', isEqualTo: 'Trip advance')
             .get();
 
-        // Delete all matching transactions
         for (var doc in driverTransactionQuery.docs) {
           await FirebaseFirestore.instance
               .collection('drivertransactions')
@@ -78,7 +77,6 @@ class _TripDetailScreenState extends State<TripDetailScreen>
             .where('description', isEqualTo: 'Trip payment')
             .get();
 
-        // Delete all matching transactions
         for (var doc in driverTransactionQuery.docs) {
           await FirebaseFirestore.instance
               .collection('drivertransactions')
@@ -92,7 +90,22 @@ class _TripDetailScreenState extends State<TripDetailScreen>
     int tripAmountInt = int.parse(tripAmount);
     String transactionAmount = (tripAmountInt * 0.2).toInt().toString();
 
-    // Query and update the 'partyreport' collection
+    // Delete the associated Bhata transaction
+    final bhataTransactionQuery = await FirebaseFirestore.instance
+        .collection('drivertransactions')
+        .where('driverName', isEqualTo: driverName)
+        .where('amount', isEqualTo: transactionAmount)
+        .where('description', isEqualTo: 'Bhata')
+        .get();
+
+    for (var doc in bhataTransactionQuery.docs) {
+      await FirebaseFirestore.instance
+          .collection('drivertransactions')
+          .doc(doc.id)
+          .delete();
+    }
+
+    // Update the 'partyreport' collection
     final partyReportQuery = await FirebaseFirestore.instance
         .collection('partyreport')
         .where('partyName', isEqualTo: partyName)
@@ -100,7 +113,7 @@ class _TripDetailScreenState extends State<TripDetailScreen>
 
     if (partyReportQuery.docs.isNotEmpty) {
       final partyReportDoc = partyReportQuery.docs.first;
-      String currentAmountString = partyReportDoc['amount']; // Amount is stored as a string
+      String currentAmountString = partyReportDoc['amount'];
 
       int currentAmountInt = int.parse(currentAmountString);
       int newAmount = currentAmountInt - tripAmountInt;
@@ -117,7 +130,7 @@ class _TripDetailScreenState extends State<TripDetailScreen>
       print('No matching party report found for partyName: $partyName');
     }
 
-    print('Trip and associated advances, payments, and driver transactions successfully deleted');
+    print('Trip and associated transactions successfully deleted');
   } on FirebaseException catch (e) {
     print('Error deleting trip or associated transactions: ${e.message}');
     throw Exception('Failed to delete trip or transactions: ${e.message}');
@@ -126,6 +139,7 @@ class _TripDetailScreenState extends State<TripDetailScreen>
     throw Exception('An unexpected error occurred while deleting the trip');
   }
 }
+
 
 
 
