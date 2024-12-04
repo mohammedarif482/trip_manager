@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:tripmanager/View/Widgets/EditTripPage.dart';
 import 'package:tripmanager/View/Widgets/party_detail.dart';
 import 'package:tripmanager/View/Widgets/profit_detail.dart';
 import 'package:tripmanager/View/Widgets/DriverDetail.dart'; // Import the new widget
@@ -240,94 +241,123 @@ class _TripDetailScreenState extends State<TripDetailScreen>
       },
     );
   }
-
+  
+  
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.accentColor,
-        elevation: 2,
-        title: Text('Trip Details'),
-        actions: [
-          if (!isDriver) // Hide delete option if the user is a driver
-            PopupMenuButton<String>(
-              onSelected: (String choice) {
-                if (choice == 'delete') {
-                  _showDeleteConfirmationDialog();
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.delete, color: Colors.black),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Delete',
-                        style: TextStyle(color: AppColors.primaryColor),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              icon: const Icon(Icons.more_vert),
-            ),
-        ],
-        bottom: TabBar(
-          indicatorColor: AppColors.primaryColor,
-          labelColor: AppColors.primaryColor,
-          labelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-          controller: _tabController,
-          tabs: [
-            Tab(text: 'Party'),
-            Tab(text: 'Profit'),
-            Tab(text: 'Driver'),
-            Tab(text: 'More'),
-          ],
-        ),
-      ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _fetchTripDetails(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          final tripData = snapshot.data!;
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: PartyDetail(
-                  tripData: tripData,
-                  tripId: widget.tripId,
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: AppColors.accentColor,
+      elevation: 2,
+      title: Text('Trip Details'),
+      actions: [
+        if (!isDriver) // Hide options if the user is a driver
+          PopupMenuButton<String>(
+            onSelected: (String choice) {
+              if (choice == 'delete') {
+                _showDeleteConfirmationDialog();
+              } else if (choice == 'edit') {
+                // Handle edit action
+                _handleEditAction(widget.tripId);
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit, color: Colors.black),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Edit',
+                      style: TextStyle(color: AppColors.primaryColor),
+                    ),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: ProfitDetail(
-                  tripData: tripData,
-                  tripId: widget.tripId,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: DriverDetail(
-                  tripData: tripData,
-                ),
-              ),
-              Container(
-                child: Center(
-                  child: Text("More"),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete, color: Colors.black),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Delete',
+                      style: TextStyle(color: AppColors.primaryColor),
+                    ),
+                  ],
                 ),
               ),
             ],
-          );
-        },
+            icon: const Icon(Icons.more_vert),
+          ),
+      ],
+      bottom: TabBar(
+        indicatorColor: AppColors.primaryColor,
+        labelColor: AppColors.primaryColor,
+        labelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+        controller: _tabController,
+        tabs: [
+          Tab(text: 'Party'),
+          Tab(text: 'Profit'),
+          Tab(text: 'Driver'),
+          Tab(text: 'More'),
+        ],
       ),
-    );
-  }
+    ),
+    body: FutureBuilder<Map<String, dynamic>>(
+      future: _fetchTripDetails(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        final tripData = snapshot.data!;
+        return TabBarView(
+          controller: _tabController,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: PartyDetail(
+                tripData: tripData,
+                tripId: widget.tripId,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: ProfitDetail(
+                tripData: tripData,
+                tripId: widget.tripId,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: DriverDetail(
+                tripData: tripData,
+              ),
+            ),
+            Container(
+              child: Center(
+                child: Text("More"),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
+
+// Function to handle the "Edit" action (you can customize it further)
+void _handleEditAction(String tripId) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => EditTripPage(tripId: tripId),
+    ),
+  );
+}
+
+    }
+
 
