@@ -49,6 +49,7 @@ class AuthCheck extends StatelessWidget {
           .doc(user.uid)
           .get();
       if (userDoc.exists && userDoc.data()?['isDriver'] == true) {
+        isDriver = true;
         return true;
       }
     }

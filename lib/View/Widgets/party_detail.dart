@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/Widgets/partystatement.dart';
+import 'package:tripmanager/main.dart';
 
 class PartyDetail extends StatefulWidget {
   final Map<String, dynamic> tripData;
@@ -416,11 +417,15 @@ class _PartyDetailState extends State<PartyDetail> {
                                 children: [
                                   Text('₹ ${advance['amount']}',
                                       style: TextStyle(fontSize: 16)),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteAdvance(advance),
-                                    tooltip: 'Delete Advance',
-                                  ),
+                                  AuthCheck.isDriver != true
+                                      ? IconButton(
+                                          icon: Icon(Icons.delete,
+                                              color: Colors.red),
+                                          onPressed: () =>
+                                              _deleteAdvance(advance),
+                                          tooltip: 'Delete Advance',
+                                        )
+                                      : SizedBox(),
                                 ],
                               ),
                               const SizedBox(height: 4),
@@ -498,11 +503,15 @@ class _PartyDetailState extends State<PartyDetail> {
                                 children: [
                                   Text('₹ ${payment['amount']}',
                                       style: TextStyle(fontSize: 16)),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deletePayment(payment),
-                                    tooltip: 'Delete Payment',
-                                  ),
+                                  AuthCheck.isDriver != true
+                                      ? IconButton(
+                                          icon: Icon(Icons.delete,
+                                              color: Colors.red),
+                                          onPressed: () =>
+                                              _deletePayment(payment),
+                                          tooltip: 'Delete Payment',
+                                        )
+                                      : SizedBox(),
                                 ],
                               ),
                               const SizedBox(height: 4),
@@ -900,8 +909,7 @@ class _PartyDetailState extends State<PartyDetail> {
                           String formattedDate =
                               "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
                           setStateDialog(() {
-                            dateController.text =
-                                formattedDate; 
+                            dateController.text = formattedDate;
                           });
                         }
                       },
