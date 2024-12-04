@@ -658,17 +658,16 @@ class _DriverDetailState extends State<DriverDetail> {
                                     )
                                   : Center(child: Text("-")),
                             ),
-                            // Delete Button (only visible if not from a trip)
-                            if (!hasFromTrip)
-                              //  AuthCheck.isDriver != true?
-                              IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () {
-                                  _deleteTransaction(transaction['id']);
-                                },
-                              )
-                            // :SizedBox()
-                            ,
+                             if (!hasFromTrip)
+                              AuthCheck.isDriver != true
+                                  ? IconButton(
+                                      icon:
+                                          Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () {
+                                        _deleteTransaction(transaction['id']);
+                                      },
+                                    )
+                                  : SizedBox(),
                           ],
                         ),
                       );
