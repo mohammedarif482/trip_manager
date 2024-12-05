@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class EditTripPage extends StatefulWidget {
   final String tripId;
@@ -159,7 +160,8 @@ class _EditTripPageState extends State<EditTripPage> {
   }
 
   // Convert selected date to 'yyyy-MM-dd' format for driver transactions
-  String formattedDate = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+  String formattedDate =
+      "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
   print('Formatted Date for transactions: $formattedDate'); // Debugging
 
   final updatedTrip = {
@@ -185,7 +187,12 @@ class _EditTripPageState extends State<EditTripPage> {
     // If the driver name has changed, update transactions for the old driver
     if (oldDriverName != selectedDriver) {
       print("Driver name changed, updating driver transactions...");
-      await _updateDriverTransactions(oldDriverName, selectedDriver!, formattedDate); // Use non-nullable selectedDriver
+      await _updateDriverTransactions(
+        oldDriverName,             // Old driver name
+        selectedDriver!,           // New driver name
+        amountController.text,     // Trip amount
+        formattedDate              // Formatted trip date
+      );
     } else {
       print("Driver name did not change, skipping transaction update.");
     }
@@ -213,6 +220,7 @@ class _EditTripPageState extends State<EditTripPage> {
   }
 }
 
+
 Future<String?> _fetchOldDriverName() async {
   try {
     // Fetch the document from the trips collection using the trip ID
@@ -235,39 +243,70 @@ Future<String?> _fetchOldDriverName() async {
   }
 }
 
-Future<void> _updateDriverTransactions(String oldDriverName, String newDriverName, String formattedDate) async {
+Future<void> _updateDriverTransactions(
+  String oldDriverName,
+  String newDriverName,
+  String tripAmountString,
+  String tripDateString, // Can be in either "4 Dec 2024" or "2024-12-06"
+) async {
   try {
-    // Query the drivertransactions collection to find transactions matching the old driver name and description
+    // Debugging: Log the raw date string
+    print('Raw trip date string: "$tripDateString"');
+
+    // Convert trip amount to double and calculate 20%
+    double tripAmount = double.tryParse(tripAmountString) ?? 0;
+    int targetAmount = (tripAmount * 0.2).round(); // 20% rounded to nearest integer
+    String targetAmountString = targetAmount.toString(); // Convert to string
+
+    DateTime parsedTripDate;
+    // Handle dynamic date format parsing
+    try {
+      if (tripDateString.contains('-')) {
+        // If the string is in "yyyy-MM-dd" format
+        parsedTripDate = DateFormat('yyyy-MM-dd').parse(tripDateString.trim());
+      } else {
+        // If the string is in "d MMM yyyy" format
+        parsedTripDate = DateFormat('d MMM yyyy').parse(tripDateString.trim());
+      }
+    } catch (e) {
+      print('Error parsing trip date string: $tripDateString. Exception: $e');
+      throw FormatException(
+          'Invalid date format for trip date: "$tripDateString".');
+    }
+
+    // Convert parsed date to "2024-12-06" format for Firestore queries
+    String formattedTripDate = DateFormat('yyyy-MM-dd').format(parsedTripDate);
+
+    // Debugging: Log the formatted date
+    print('Converted trip date: $formattedTripDate');
+
+    // Query the drivertransactions collection
     QuerySnapshot transactionSnapshot = await FirebaseFirestore.instance
         .collection('drivertransactions')
         .where('driverName', isEqualTo: oldDriverName)
-        .where('description', isEqualTo: 'Bhata') // match description
+        .where('description', isEqualTo: 'Bhata') // Match description
+        .where('amount', isEqualTo: targetAmountString) // Match 20% of trip amount
+        .where('date', isEqualTo: formattedTripDate) // Match formatted date
         .get();
 
-    print('Found ${transactionSnapshot.docs.length} matching transactions'); // Debugging
+    print('Found ${transactionSnapshot.docs.length} matching transactions');
 
-    // If matching transactions are found, update them
+    // If matching transactions are found, update only the first one
     if (transactionSnapshot.docs.isNotEmpty) {
-      for (var doc in transactionSnapshot.docs) {
-        // Get the amount from the trip (make sure it's a string)
-        double amount = double.tryParse(amountController.text) ?? 0;
-        double newAmount = amount * 0.2;  // 20% of the trip amount
+      var doc = transactionSnapshot.docs.first;
 
-        // Convert the new amount to string format
-        String newAmountString = newAmount.toStringAsFixed(2); // to make it in string format with two decimals
+      // Update the transaction data
+      await FirebaseFirestore.instance
+          .collection('drivertransactions')
+          .doc(doc.id)
+          .update({
+        'driverName': newDriverName, // Update to the new driver
+        'amount': targetAmountString, // Ensure integer string format
+        'date': formattedTripDate, // Already formatted date
+      });
 
-        // Prepare the updated transaction data
-        await FirebaseFirestore.instance
-            .collection('drivertransactions')
-            .doc(doc.id)
-            .update({
-          'driverName': newDriverName, // update to the new driver
-          'amount': newAmountString, // update to 20% of the amount as string
-          'date': formattedDate, // update to the formatted date 'yyyy-MM-dd'
-        });
-
-        print("Updated transaction for driver: $newDriverName with amount: $newAmountString and date: $formattedDate");
-      }
+      print(
+          "Updated transaction for driver: $newDriverName with amount: $targetAmountString and date: $formattedTripDate");
     } else {
       print("No matching transactions found for driver: $oldDriverName");
     }
@@ -275,6 +314,11 @@ Future<void> _updateDriverTransactions(String oldDriverName, String newDriverNam
     print("Error updating driver transaction: $e");
   }
 }
+
+
+
+
+
 
 
 
