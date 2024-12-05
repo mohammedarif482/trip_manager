@@ -454,6 +454,48 @@ class _DriverDetailState extends State<DriverDetail> {
                     ),
                   ),
 
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment
+                          .start, // Align the button to the left
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Navigate to the DriverStatementPage when the button is pressed
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DriverStatementPage(
+                                    driverName: widget.tripData['driverName']),
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.picture_as_pdf,
+                              color: Colors.white), // PDF icon
+                          label: Text(
+                            'View PDF',
+                            style: TextStyle(
+                              color: Colors.white, // White text
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Colors.green, // Set button background color
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 32.0, vertical: 12.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(8.0), // Rounded corners
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // Transactions List
                   Column(
                     children: _transactions.map((transaction) {
