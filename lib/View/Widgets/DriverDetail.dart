@@ -335,6 +335,13 @@ class _DriverDetailState extends State<DriverDetail> {
 
   @override
   Widget build(BuildContext context) {
+    // Sort the transactions by date (descending order)
+    _transactions.sort((a, b) {
+      DateTime dateA = DateTime.parse(a['date']);
+      DateTime dateB = DateTime.parse(b['date']);
+      return dateB.compareTo(dateA); // Sort in descending order
+    });
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,9 +411,7 @@ class _DriverDetailState extends State<DriverDetail> {
                             color: Colors.black, // Black color for the text
                           ),
                         ),
-                        const SizedBox(
-                            height:
-                                4), // Space between the header and the amount
+                        const SizedBox(height: 4), // Space between the header and the amount
                         Text(
                           '₹${_totalCollected.toStringAsFixed(2)}', // Amount in blue color
                           style: TextStyle(
@@ -423,22 +428,17 @@ class _DriverDetailState extends State<DriverDetail> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment
-                          .start, // Align the button to the left
+                      mainAxisAlignment: MainAxisAlignment.start, // Align the button to the left
                       children: [
                         ElevatedButton(
                           onPressed: () {
-                            _showSettleDialog(
-                                context); // Show the dialog when the "Settle" button is pressed
+                            _showSettleDialog(context); // Show the dialog when the "Settle" button is pressed
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.red, // Set button background color
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 32.0, vertical: 12.0),
+                            backgroundColor: Colors.red, // Set button background color
+                            padding: EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(8.0), // Rounded corners
+                              borderRadius: BorderRadius.circular(8.0), // Rounded corners
                             ),
                           ),
                           child: Text(
@@ -454,97 +454,6 @@ class _DriverDetailState extends State<DriverDetail> {
                     ),
                   ),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment
-                          .start, // Align the button to the left
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Navigate to the DriverStatementPage when the button is pressed
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DriverStatementPage(
-                                    driverName: widget.tripData['driverName']),
-                              ),
-                            );
-                          },
-                          icon: Icon(Icons.picture_as_pdf,
-                              color: Colors.white), // PDF icon
-                          label: Text(
-                            'View PDF',
-                            style: TextStyle(
-                              color: Colors.white, // White text
-                              fontSize: 16.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Colors.green, // Set button background color
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 32.0, vertical: 12.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(8.0), // Rounded corners
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Header Row for the table
-                  Container(
-                    color: Colors
-                        .grey[200], // Light grey background for the header
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 8.0, horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            "REASON",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            "DRIVER GAVE",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            "DRIVER GOT",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
                   // Transactions List
                   Column(
                     children: _transactions.map((transaction) {
@@ -553,8 +462,7 @@ class _DriverDetailState extends State<DriverDetail> {
 
                       return Container(
                         margin: const EdgeInsets.symmetric(vertical: 8.0),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16.0, horizontal: 16.0),
+                        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8.0),
@@ -576,8 +484,7 @@ class _DriverDetailState extends State<DriverDetail> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    transaction['description'] ??
-                                        'No Description',
+                                    transaction['description'] ?? 'No Description',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -596,8 +503,7 @@ class _DriverDetailState extends State<DriverDetail> {
                                   Text(
                                     '${transaction['paymentMethod'] ?? 'N/A'}',
                                     style: TextStyle(
-                                      color: const Color.fromARGB(
-                                          255, 39, 175, 134),
+                                      color: const Color.fromARGB(255, 39, 175, 134),
                                       fontSize: 12,
                                       fontStyle: FontStyle.italic,
                                     ),
@@ -606,12 +512,10 @@ class _DriverDetailState extends State<DriverDetail> {
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8.0),
                                       child: Container(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 8.0, vertical: 4.0),
+                                        padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                         decoration: BoxDecoration(
                                           color: Colors.blue.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(4.0),
+                                          borderRadius: BorderRadius.circular(4.0),
                                         ),
                                         child: Text(
                                           'FROM A TRIP',
@@ -658,11 +562,10 @@ class _DriverDetailState extends State<DriverDetail> {
                                     )
                                   : Center(child: Text("-")),
                             ),
-                             if (!hasFromTrip)
+                            if (!hasFromTrip)
                               AuthCheck.isDriver != true
                                   ? IconButton(
-                                      icon:
-                                          Icon(Icons.delete, color: Colors.red),
+                                      icon: Icon(Icons.delete, color: Colors.red),
                                       onPressed: () {
                                         _deleteTransaction(transaction['id']);
                                       },

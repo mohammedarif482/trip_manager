@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/main.dart';
@@ -51,82 +52,51 @@ class _ProfitDetailState extends State<ProfitDetail> {
   }
 
   Widget _buildExpenses() {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('trips')
-          .doc(widget.tripId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator();
-        }
+  return StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const CircularProgressIndicator();
+      }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          // No document found or doesn't exist
-          return _buildAmountRow('Expenses', '₹0', false);
-        }
+      if (!snapshot.hasData || !snapshot.data!.exists) {
+        // No document found or doesn't exist
+        return _buildAmountRow('Expenses', '₹0', false);
+      }
 
-        // Document exists
-        var tripData = snapshot.data!.data() as Map<String, dynamic>;
-        List expenses =
-            tripData.containsKey('expenses') ? tripData['expenses'] : [];
+      // Document exists
+      var tripData = snapshot.data!.data() as Map<String, dynamic>;
+      List expenses =
+          tripData.containsKey('expenses') ? tripData['expenses'] : [];
 
-        // Calculate freight amount
-        String cleanedString =
-            tripData['amount'].replaceAll(RegExp(r'[^0-9]'), '');
-        double amount = double.parse(cleanedString);
-        double totalExpense = expenses.fold(
-            0.0, (sum, expense) => sum + (expense['amount'] ?? 0.0));
+      // Sort the expenses by date
+      expenses.sort((a, b) {
+        DateTime dateA = DateTime.parse(a['date']);
+        DateTime dateB = DateTime.parse(b['date']);
+        return dateA.compareTo(dateB); // Sort by date (ascending)
+      });
 
-        // Calculate commission and Bhata
-        double commission = amount * 0.04;
-        double bhata = amount * 0.20;
+      // Calculate freight amount
+      String cleanedString =
+          tripData['amount'].replaceAll(RegExp(r'[^0-9]'), '');
+      double amount = double.parse(cleanedString);
+      double totalExpense = expenses.fold(
+          0.0, (sum, expense) => sum + (expense['amount'] ?? 0.0));
 
-        // Calculate profit
-        double profit = amount - (totalExpense + commission + bhata);
+      // Calculate commission and Bhata
+      double commission = amount * 0.04;
+      double bhata = amount * 0.20;
 
-        if (expenses.isEmpty) {
-          return Column(
-            children: [
-              _buildAmountRow('Expenses', '₹0', false),
-              const Divider(height: 32),
-              _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
-              _buildAmountRow('Commission', '- ₹$commission', false),
-              _buildAmountRow('Bhata', '- ₹$bhata', false),
-              const Divider(height: 32),
-              _buildAmountRow('Profit', '₹$profit', false),
-            ],
-          );
-        }
+      // Calculate profit
+      double profit = amount - (totalExpense + commission + bhata);
 
+      if (expenses.isEmpty) {
         return Column(
           children: [
-            ...expenses.asMap().entries.map((entry) {
-              int index = entry.key;
-              Map<String, dynamic> expense = entry.value;
-
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: _buildAmountRow(
-                      expense['expense'],
-                      '₹${expense['amount']}',
-                      false,
-                    ),
-                  ),
-                  AuthCheck.isDriver != true
-                      ? IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            _deleteExpense(
-                                context, expense, widget.tripId, index);
-                          },
-                        )
-                      : SizedBox(),
-                ],
-              );
-            }).toList(),
+            _buildAmountRow('Expenses', '₹0', false),
             const Divider(height: 32),
             _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
             _buildAmountRow('Commission', '- ₹$commission', false),
@@ -135,9 +105,78 @@ class _ProfitDetailState extends State<ProfitDetail> {
             _buildAmountRow('Profit', '₹$profit', false),
           ],
         );
-      },
-    );
-  }
+      }
+
+      return Column(
+        children: [
+          ...expenses.asMap().entries.map((entry) {
+            int index = entry.key;
+            Map<String, dynamic> expense = entry.value;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildAmountRow(
+                          expense['expense'],
+                          '₹${expense['amount']}',
+                          false,
+                        ),
+                      ),
+                      AuthCheck.isDriver != true
+                          ? IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                _deleteExpense(
+                                    context, expense, widget.tripId, index);
+                              },
+                            )
+                          : const SizedBox(),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${expense['date']}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  if (expense['paidByDriver'] == true)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        'Paid By Driver',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }).toList(),
+          const Divider(height: 32),
+          _buildAmountRow('Total Expense', '- ₹$totalExpense', false),
+          _buildAmountRow('Commission', '- ₹$commission', false),
+          _buildAmountRow('Bhata', '- ₹$bhata', false),
+          const Divider(height: 32),
+          _buildAmountRow('Profit', '₹$profit', false),
+        ],
+      );
+    },
+  );
+}
+
+
 
   Widget _buildActionLink(String text, VoidCallback onTap) {
     return GestureDetector(
@@ -158,121 +197,148 @@ class _ProfitDetailState extends State<ProfitDetail> {
     );
   }
 
-  void _showAddChargesDialog() {
-    DateTime selectedDate = DateTime.now();
-    bool isPaidByDriver = false; // Local for now
-    String selectedPaymentMethod = "Cash"; // Default payment method
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Add Charges'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: expenseController,
-                    decoration: const InputDecoration(
-                      labelText: 'Expense',
-                    ),
+  bool isDriver = false;
+
+  // Add a method to check if the current user is a driver
+Future<void> _checkUserRole() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (userDoc.exists && userDoc.data() != null) {
+        setState(() {
+          isDriver = userDoc.data()!['isDriver'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    }
+  }
+}
+
+void _showAddChargesDialog() async {
+  DateTime selectedDate = DateTime.now();
+  bool isPaidByDriver = false; // Local for now
+  String selectedPaymentMethod = "Cash"; // Default payment method
+
+  // Check the user role and set the initial state of 'Paid by Driver' switch
+  await _checkUserRole(); // Ensure user role is checked before showing the dialog
+  isPaidByDriver = isDriver; // Set switch state based on user role
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Add Charges'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: expenseController,
+                  decoration: const InputDecoration(
+                    labelText: 'Expense',
                   ),
-                  TextField(
-                    controller: amountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Amount',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Date:'),
-                      TextButton(
-                        onPressed: () async {
-                          DateTime? pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                          );
-                          if (pickedDate != null &&
-                              pickedDate != selectedDate) {
-                            setState(() {
-                              selectedDate = pickedDate;
-                            });
-                          }
-                        },
-                        child: Text(
-                          "${selectedDate.toLocal()}".split(' ')[0],
-                          style: const TextStyle(color: AppColors.primaryColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: selectedPaymentMethod,
-                    items: const [
-                      DropdownMenuItem(value: "Cash", child: Text("Cash")),
-                      DropdownMenuItem(value: "UPI", child: Text("UPI")),
-                      DropdownMenuItem(value: "Online", child: Text("Online")),
-                      DropdownMenuItem(
-                          value: "Bank Transfer", child: Text("Bank Transfer")),
-                      DropdownMenuItem(value: "Other", child: Text("Other")),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedPaymentMethod = value;
-                        });
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      labelText: "Payment Method",
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Paid by Driver:'),
-                      Switch(
-                        value: isPaidByDriver,
-                        onChanged: (bool value) {
-                          setState(() {
-                            isPaidByDriver = value;
-                          });
-                        },
-                        activeColor: AppColors.primaryColor,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
                 ),
-                TextButton(
-                  onPressed: () {
-                    _addChargeToFirestore(
-                        selectedDate, isPaidByDriver, selectedPaymentMethod);
-                    Navigator.of(context).pop();
+                TextField(
+                  controller: amountController,
+                  decoration: const InputDecoration(
+                    labelText: 'Amount',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Date:'),
+                    TextButton(
+                      onPressed: () async {
+                        DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (pickedDate != null && pickedDate != selectedDate) {
+                          setState(() {
+                            selectedDate = pickedDate;
+                          });
+                        }
+                      },
+                      child: Text(
+                        "${selectedDate.toLocal()}".split(' ')[0],
+                        style: const TextStyle(color: AppColors.primaryColor),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedPaymentMethod,
+                  items: const [
+                    DropdownMenuItem(value: "Cash", child: Text("Cash")),
+                    DropdownMenuItem(value: "UPI", child: Text("UPI")),
+                    DropdownMenuItem(value: "Online", child: Text("Online")),
+                    DropdownMenuItem(
+                        value: "Bank Transfer", child: Text("Bank Transfer")),
+                    DropdownMenuItem(value: "Other", child: Text("Other")),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        selectedPaymentMethod = value;
+                      });
+                    }
                   },
-                  child: const Text('Add'),
+                  decoration: const InputDecoration(
+                    labelText: "Payment Method",
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Paid by Driver:'),
+                    Switch(
+                      value: isPaidByDriver,
+                      onChanged: (bool value) {
+                        setState(() {
+                          isPaidByDriver = value;
+                        });
+                      },
+                      activeColor: AppColors.primaryColor,
+                    ),
+                  ],
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  _addChargeToFirestore(
+                    selectedDate, 
+                    isPaidByDriver, 
+                    selectedPaymentMethod
+                  );
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
 
   void _addChargeToFirestore(
       DateTime selectedDate, bool isPaidByDriver, String paymentMethod) async {

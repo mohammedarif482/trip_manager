@@ -772,6 +772,7 @@ import 'package:tripmanager/Utils/constants.dart';
 import 'package:tripmanager/View/Widgets/trip_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:tripmanager/main.dart';
+import 'package:intl/intl.dart';
 
 class TripsScreen extends StatefulWidget {
   @override
@@ -799,88 +800,27 @@ class _TripsScreenState extends State<TripsScreen> {
   Future<List<Map<String, dynamic>>>? _tripsCompletedData;
 
   Future<List<Map<String, dynamic>>> _fetchTrips() async {
-    try {
-      final String? userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) {
-        throw Exception("User not logged in");
-      }
-
-      // Fetch user details
-      final DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
-
-      if (!userSnapshot.exists) {
-        throw Exception("User document not found");
-      }
-
-      final Map<String, dynamic>? userData =
-          userSnapshot.data() as Map<String, dynamic>?;
-
-      if (userData == null) {
-        throw Exception("User data is null");
-      }
-
-      final String userName = userData['name'] ?? '';
-      final bool isDriver = userData['isDriver'] ?? false;
-
-      Query query = FirebaseFirestore.instance.collection('trips');
-
-      // Filter trips based on driver or all
-      if (isDriver) {
-        query = query.where('driverName', isEqualTo: userName);
-      }
-
-      final QuerySnapshot snapshot = await query.get();
-
-      final trips = snapshot.docs.map((doc) {
-        final Map<String, dynamic> tripData =
-            doc.data() as Map<String, dynamic>;
-
-        return {
-          "tripId": doc.id,
-          "partyName": doc['partyName'],
-          "driverName": doc['driverName'],
-          "vehicleNumber": doc['vehicleNumber'],
-          "fromLocation": doc['fromLocation'],
-          "toLocation": doc['toLocation'],
-          "date": doc['date'],
-          "status": doc['status'],
-          "amount": doc['amount'],
-          "endDate": tripData['endDate'] != null
-              ? (tripData['endDate'] as Timestamp).toDate()
-              : null,
-        };
-      }).toList();
-
-      if (!isDriver) {
-        return trips
-            .where((trip) => trip['status'] != 'Trip Completed')
-            .toList();
-      }
-
-      return trips;
-    } catch (e) {
-      print("Error fetching trips: $e");
-      rethrow;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
+  try {
     final String? userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) {
       throw Exception("User not logged in");
     }
 
-    final DocumentSnapshot userSnapshot =
-        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    // Fetch user details
+    final DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+
+    if (!userSnapshot.exists) {
+      throw Exception("User document not found");
+    }
 
     final Map<String, dynamic>? userData =
         userSnapshot.data() as Map<String, dynamic>?;
 
     if (userData == null) {
-      throw Exception("User data not found");
+      throw Exception("User data is null");
     }
 
     final String userName = userData['name'] ?? '';
@@ -888,16 +828,19 @@ class _TripsScreenState extends State<TripsScreen> {
 
     Query query = FirebaseFirestore.instance.collection('trips');
 
+    // Filter trips based on driver or all
     if (isDriver) {
       query = query.where('driverName', isEqualTo: userName);
     }
 
-    query = query.where('status', isEqualTo: 'Trip Completed');
-
     final QuerySnapshot snapshot = await query.get();
 
-    return snapshot.docs.map((doc) {
-      final Map<String, dynamic> tripData = doc.data() as Map<String, dynamic>;
+    final DateFormat dateFormat = DateFormat('d MMM yyyy');
+
+    final trips = snapshot.docs.map((doc) {
+      final Map<String, dynamic> tripData =
+          doc.data() as Map<String, dynamic>;
+
       return {
         "tripId": doc.id,
         "partyName": doc['partyName'],
@@ -905,7 +848,8 @@ class _TripsScreenState extends State<TripsScreen> {
         "vehicleNumber": doc['vehicleNumber'],
         "fromLocation": doc['fromLocation'],
         "toLocation": doc['toLocation'],
-        "date": doc['date'],
+        "date": doc['date'], // Keep the string for display
+        "parsedDate": dateFormat.parse(doc['date']), // Parse for sorting
         "status": doc['status'],
         "amount": doc['amount'],
         "endDate": tripData['endDate'] != null
@@ -913,7 +857,81 @@ class _TripsScreenState extends State<TripsScreen> {
             : null,
       };
     }).toList();
+
+    // Sort trips by parsedDate
+    trips.sort((a, b) => a['parsedDate'].compareTo(b['parsedDate']));
+
+    if (!isDriver) {
+      return trips
+          .where((trip) => trip['status'] != 'Trip Completed')
+          .toList();
+    }
+
+    return trips;
+  } catch (e) {
+    print("Error fetching trips: $e");
+    rethrow;
   }
+}
+
+
+  Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
+  final String? userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId == null) {
+    throw Exception("User not logged in");
+  }
+
+  final DocumentSnapshot userSnapshot =
+      await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+  final Map<String, dynamic>? userData =
+      userSnapshot.data() as Map<String, dynamic>?;
+
+  if (userData == null) {
+    throw Exception("User data not found");
+  }
+
+  final String userName = userData['name'] ?? '';
+  final bool isDriver = userData['isDriver'] ?? false;
+
+  Query query = FirebaseFirestore.instance.collection('trips');
+
+  if (isDriver) {
+    query = query.where('driverName', isEqualTo: userName);
+  }
+
+  query = query.where('status', isEqualTo: 'Trip Completed');
+
+  final QuerySnapshot snapshot = await query.get();
+
+  final DateFormat dateFormat = DateFormat('d MMM yyyy');
+
+  final trips = snapshot.docs.map((doc) {
+    final Map<String, dynamic> tripData = doc.data() as Map<String, dynamic>;
+    return {
+      "tripId": doc.id,
+      "partyName": doc['partyName'],
+      "driverName": doc['driverName'],
+      "vehicleNumber": doc['vehicleNumber'],
+      "fromLocation": doc['fromLocation'],
+      "toLocation": doc['toLocation'],
+      "date": doc['date'], // Original date string
+      "parsedDate": dateFormat.parse(doc['date']), // Parsed for sorting
+      "status": doc['status'],
+      "amount": doc['amount'],
+      "endDate": tripData['endDate'] != null
+          ? (tripData['endDate'] as Timestamp).toDate()
+          : null,
+    };
+  }).toList();
+
+  // Sort trips by parsedDate
+  trips.sort((a, b) => a['parsedDate'].compareTo(b['parsedDate']));
+
+  return trips;
+}
+
+
 
   Future<void> _loadTrips() async {
     setState(() {
