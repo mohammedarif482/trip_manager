@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:tripmanager/main.dart';
 
 import 'DriverStatement.dart';
@@ -122,91 +123,94 @@ class _DriverDetailState extends State<DriverDetail> {
 
   // Show the dialog for adding a new transaction
   void _showTransactionDialog(String transactionType) {
-    final TextEditingController amountController = TextEditingController();
-    final TextEditingController descriptionController = TextEditingController();
-    final TextEditingController dateController = TextEditingController();
-    String? selectedPaymentMethod;
+  final TextEditingController amountController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController dateController = TextEditingController();
+  String? selectedPaymentMethod;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(transactionType == 'got' ? "Driver Got" : "Driver Gave"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(labelText: 'Description'),
-            ),
-            TextField(
-              controller: amountController,
-              decoration: InputDecoration(labelText: 'Amount'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: dateController,
-              decoration: InputDecoration(
-                labelText: 'Date',
-                suffixIcon: Icon(Icons.calendar_today),
-              ),
-              readOnly: true,
-              onTap: () async {
-                DateTime? pickedDate = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (pickedDate != null) {
-                  dateController.text =
-                      pickedDate.toLocal().toString().split(' ')[0];
-                }
-              },
-            ),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(labelText: 'Payment Method'),
-              items: [
-                DropdownMenuItem(value: 'Cash', child: Text('Cash')),
-                DropdownMenuItem(value: 'UPI', child: Text('UPI')),
-                DropdownMenuItem(value: 'Card', child: Text('Card')),
-                DropdownMenuItem(value: 'Online', child: Text('Online')),
-              ],
-              onChanged: (value) {
-                selectedPaymentMethod = value;
-              },
-              value: selectedPaymentMethod,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text("Cancel"),
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(transactionType == 'got' ? "Driver Got" : "Driver Gave"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: descriptionController,
+            decoration: InputDecoration(labelText: 'Description'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (descriptionController.text.isNotEmpty &&
-                  amountController.text.isNotEmpty &&
-                  dateController.text.isNotEmpty &&
-                  selectedPaymentMethod != null) {
-                _addTransaction(
-                  transactionType,
-                  descriptionController.text,
-                  amountController.text,
-                  dateController.text,
-                  selectedPaymentMethod!,
-                );
-                Navigator.of(context).pop();
+          TextField(
+            controller: amountController,
+            decoration: InputDecoration(labelText: 'Amount'),
+            keyboardType: TextInputType.number, // Use the numeric keyboard
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly, // Allow only digits
+            ],
+          ),
+          TextField(
+            controller: dateController,
+            decoration: InputDecoration(
+              labelText: 'Date',
+              suffixIcon: Icon(Icons.calendar_today),
+            ),
+            readOnly: true,
+            onTap: () async {
+              DateTime? pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (pickedDate != null) {
+                dateController.text =
+                    pickedDate.toLocal().toString().split(' ')[0];
               }
             },
-            child: Text("Submit"),
+          ),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(labelText: 'Payment Method'),
+            items: [
+              DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+              DropdownMenuItem(value: 'UPI', child: Text('UPI')),
+              DropdownMenuItem(value: 'Card', child: Text('Card')),
+              DropdownMenuItem(value: 'Online', child: Text('Online')),
+            ],
+            onChanged: (value) {
+              selectedPaymentMethod = value;
+            },
+            value: selectedPaymentMethod,
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (descriptionController.text.isNotEmpty &&
+                amountController.text.isNotEmpty &&
+                dateController.text.isNotEmpty &&
+                selectedPaymentMethod != null) {
+              _addTransaction(
+                transactionType,
+                descriptionController.text,
+                amountController.text,
+                dateController.text,
+                selectedPaymentMethod!,
+              );
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text("Submit"),
+        ),
+      ],
+    ),
+  );
+}
 
   // Function to settle transactions for the driver
   Future<void> _settleTransactions(String date, String paymentMethod) async {
@@ -362,6 +366,7 @@ class _DriverDetailState extends State<DriverDetail> {
                   ),
                 ],
               ),
+              
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -496,6 +501,25 @@ class _DriverDetailState extends State<DriverDetail> {
                     ),
                   ),
 
+                  // Buttons for adding new transactions (+ Driver Got, - Driver Gave)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _showTransactionDialog('got'),
+                          child: Text('+ Driver Got'),
+                        ),
+                        SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () => _showTransactionDialog('gave'),
+                          child: Text('- Driver Gave'),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // Transactions List
                   Column(
                     children: _transactions.map((transaction) {
@@ -624,20 +648,7 @@ class _DriverDetailState extends State<DriverDetail> {
           ),
 
           // Buttons for adding new transactions (+ Driver Got, - Driver Gave)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () => _showTransactionDialog('got'),
-                child: Text('+ Driver Got'),
-              ),
-              SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: () => _showTransactionDialog('gave'),
-                child: Text('- Driver Gave'),
-              ),
-            ],
-          ),
+          
         ],
       ),
     );

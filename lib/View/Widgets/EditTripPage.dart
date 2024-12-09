@@ -145,29 +145,48 @@ class _EditTripPageState extends State<EditTripPage> {
     return;
   }
 
-  // Fetch the old driver name from the trips collection before the update
-  String? oldDriverName = await _fetchOldDriverName();
-  if (oldDriverName == null) {
+  // Fetch the old trip data
+  DocumentSnapshot oldTripSnapshot = await FirebaseFirestore.instance
+      .collection('trips')
+      .doc(widget.tripId)
+      .get();
+
+  if (!oldTripSnapshot.exists) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          content: Text('Old driver name not found!'),
+          content: Text('Trip not found!'),
         );
       },
     );
     return;
   }
 
-  // Convert selected date to 'yyyy-MM-dd' format for driver transactions
-  String formattedDate =
-      "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-  print('Formatted Date for transactions: $formattedDate'); // Debugging
+  String? oldAmount = oldTripSnapshot.get('amount');
+  String? oldDriverName = oldTripSnapshot.get('driverName');
+  String? oldPartyName = oldTripSnapshot.get('partyName');
+  String? oldTripDate = oldTripSnapshot.get('date');
+
+  if (oldAmount == null || oldDriverName == null || oldPartyName == null) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Text('Old trip details are incomplete!'),
+        );
+      },
+    );
+    return;
+  }
+
+  // Ensure formattedDate is not null
+  String formattedDate = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
   final updatedTrip = {
-    "partyName": selectedPartyName,
-    "driverName": selectedDriver,
-    "vehicleNumber": selectedVehicleNumber,
+    "partyName": selectedPartyName ?? "", // Provide default value for nullable strings
+    "driverName": selectedDriver ?? "", // Provide default value for nullable strings
+    "vehicleNumber": selectedVehicleNumber ?? "", // Provide default value for nullable strings
     "fromLocation": fromLocationController.text,
     "toLocation": toLocationController.text,
     "date": "${selectedDate.day} ${_getMonthName(selectedDate.month)} ${selectedDate.year}",
@@ -184,17 +203,35 @@ class _EditTripPageState extends State<EditTripPage> {
 
     print("Trip updated successfully!");
 
-    // If the driver name has changed, update transactions for the old driver
-    if (oldDriverName != selectedDriver) {
-      print("Driver name changed, updating driver transactions...");
-      await _updateDriverTransactions(
-        oldDriverName,             // Old driver name
-        selectedDriver!,           // New driver name
-        amountController.text,     // Trip amount
-        formattedDate              // Formatted trip date
-      );
+    // Update driver transactions and party report if amount, party, or driver changes
+    if (oldAmount != amountController.text || 
+        oldPartyName != selectedPartyName || 
+        oldDriverName != selectedDriver || 
+        oldTripDate != formattedDate) {
+
+      if (oldAmount != amountController.text || oldDriverName != selectedDriver || oldTripDate != formattedDate) {
+        print("Updating driver transactions...");
+        await _updateDriverTransactions(
+          oldDriverName: oldDriverName ?? "", // Provide default value for nullable strings
+          newDriverName: selectedDriver ?? "", // Provide default value for nullable strings
+          oldAmount: oldAmount ?? "0", // Provide default value for nullable strings
+          newAmount: amountController.text,
+          tripDate: formattedDate,
+          oldTripDate: oldTripDate ?? "", // Provide default value for nullable strings
+        );
+      }
+
+      if (oldPartyName != selectedPartyName || oldAmount != amountController.text) {
+        print("Updating party report...");
+        await _updatePartyReport(
+          oldPartyName: oldPartyName ?? "", // Provide default value for nullable strings
+          newPartyName: selectedPartyName ?? "", // Provide default value for nullable strings
+          oldAmount: oldAmount ?? "0", // Provide default value for nullable strings
+          newAmount: amountController.text,
+        );
+      }
     } else {
-      print("Driver name did not change, skipping transaction update.");
+      print("No changes to update in driver transactions or party report.");
     }
 
     Navigator.pop(context);
@@ -221,6 +258,87 @@ class _EditTripPageState extends State<EditTripPage> {
 }
 
 
+
+
+Future<void> _updatePartyReport({
+  required String oldPartyName,
+  required String newPartyName,
+  required String oldAmount,
+  required String newAmount,
+}) async {
+  try {
+    // Update the old party report
+    if (oldPartyName != newPartyName) {
+      // Fetch the document for the old party
+      QuerySnapshot oldPartySnapshot = await FirebaseFirestore.instance
+          .collection('partyreport')
+          .where('partyName', isEqualTo: oldPartyName)
+          .get();
+
+      if (oldPartySnapshot.docs.isNotEmpty) {
+        DocumentSnapshot oldPartyReport = oldPartySnapshot.docs.first;
+        String oldPartyAmountString = oldPartyReport.get('amount') ?? "0";
+        int oldPartyAmount = int.parse(oldPartyAmountString);
+        int oldAmountInt = int.parse(oldAmount);
+
+        // Deduct the old amount
+        int updatedOldPartyAmount = oldPartyAmount - oldAmountInt;
+
+        // Update the old party's report
+        await FirebaseFirestore.instance
+            .collection('partyreport')
+            .doc(oldPartyReport.id)
+            .update({'amount': updatedOldPartyAmount.toString()});
+
+        print("Updated old party report for $oldPartyName");
+      } else {
+        print("Old party report for $oldPartyName does not exist, skipping update.");
+      }
+    }
+
+    // Update or create the new party report
+    QuerySnapshot newPartySnapshot = await FirebaseFirestore.instance
+        .collection('partyreport')
+        .where('partyName', isEqualTo: newPartyName)
+        .get();
+
+    int newAmountInt = int.parse(newAmount);
+
+    if (newPartySnapshot.docs.isNotEmpty) {
+      DocumentSnapshot newPartyReport = newPartySnapshot.docs.first;
+      String newPartyAmountString = newPartyReport.get('amount') ?? "0";
+      int newPartyAmount = int.parse(newPartyAmountString);
+
+      // Add the new amount
+      int updatedNewPartyAmount = newPartyAmount + newAmountInt;
+
+      // Update the new party's report
+      await FirebaseFirestore.instance
+          .collection('partyreport')
+          .doc(newPartyReport.id)
+          .update({'amount': updatedNewPartyAmount.toString()});
+
+      print("Updated new party report for $newPartyName");
+    } else {
+      // Create a new party report if no document is found for the new party
+      await FirebaseFirestore.instance.collection('partyreport').add({
+        'partyName': newPartyName,
+        'amount': newAmountInt.toString(),
+      });
+
+      print("Created new party report for $newPartyName with amount: $newAmount");
+    }
+  } catch (e) {
+    print("Error updating party report: $e");
+  }
+}
+
+
+
+
+
+
+
 Future<String?> _fetchOldDriverName() async {
   try {
     // Fetch the document from the trips collection using the trip ID
@@ -243,77 +361,75 @@ Future<String?> _fetchOldDriverName() async {
   }
 }
 
-Future<void> _updateDriverTransactions(
-  String oldDriverName,
-  String newDriverName,
-  String tripAmountString,
-  String tripDateString, // Can be in either "4 Dec 2024" or "2024-12-06"
-) async {
+Future<void> _updateDriverTransactions({
+  required String oldDriverName,
+  required String newDriverName,
+  required String oldAmount,
+  required String newAmount,
+  required String tripDate,
+  required String oldTripDate,
+}) async {
   try {
-    // Debugging: Log the raw date string
-    print('Raw trip date string: "$tripDateString"');
+    print("Old Driver Name: $oldDriverName");
+    print("Old Amount: $oldAmount");
+    print("Old Trip Date: $oldTripDate");
 
-    // Convert trip amount to double and calculate 20%
-    double tripAmount = double.tryParse(tripAmountString) ?? 0;
-    int targetAmount = (tripAmount * 0.2).round(); // 20% rounded to nearest integer
-    String targetAmountString = targetAmount.toString(); // Convert to string
+    // Convert oldTripDate ("4 Dec 2024") to "yyyy-MM-dd" format (e.g., "2024-12-04")
+    DateFormat oldDateFormat = DateFormat('d MMM yyyy'); // For "4 Dec 2024"
+    DateTime parsedOldTripDate = oldDateFormat.parse(oldTripDate);
+    String formattedOldTripDate = DateFormat('yyyy-MM-dd').format(parsedOldTripDate);
 
-    DateTime parsedTripDate;
-    // Handle dynamic date format parsing
-    try {
-      if (tripDateString.contains('-')) {
-        // If the string is in "yyyy-MM-dd" format
-        parsedTripDate = DateFormat('yyyy-MM-dd').parse(tripDateString.trim());
-      } else {
-        // If the string is in "d MMM yyyy" format
-        parsedTripDate = DateFormat('d MMM yyyy').parse(tripDateString.trim());
-      }
-    } catch (e) {
-      print('Error parsing trip date string: $tripDateString. Exception: $e');
-      throw FormatException(
-          'Invalid date format for trip date: "$tripDateString".');
-    }
+    print("Formatted Old Trip Date: $formattedOldTripDate");
 
-    // Convert parsed date to "2024-12-06" format for Firestore queries
-    String formattedTripDate = DateFormat('yyyy-MM-dd').format(parsedTripDate);
+    // Ensure old and new amounts are valid and not null
+    int oldBhata = (double.parse(oldAmount) * 0.2).round();
+    int newBhata = (double.parse(newAmount) * 0.2).round();
 
-    // Debugging: Log the formatted date
-    print('Converted trip date: $formattedTripDate');
+    String oldBhataString = oldBhata.toString();
+    String newBhataString = newBhata.toString();
 
-    // Query the drivertransactions collection
+    print("Old Bhata: $oldBhataString");
+    print("New Bhata: $newBhataString");
+
+    // Query the drivertransactions collection to find the matching transaction
     QuerySnapshot transactionSnapshot = await FirebaseFirestore.instance
         .collection('drivertransactions')
         .where('driverName', isEqualTo: oldDriverName)
-        .where('description', isEqualTo: 'Bhata') // Match description
-        .where('amount', isEqualTo: targetAmountString) // Match 20% of trip amount
-        .where('date', isEqualTo: formattedTripDate) // Match formatted date
+        .where('date', isEqualTo: formattedOldTripDate) // Use formatted date for comparison
         .get();
 
-    print('Found ${transactionSnapshot.docs.length} matching transactions');
+    print("Transaction Snapshot: ${transactionSnapshot.docs}");
 
-    // If matching transactions are found, update only the first one
     if (transactionSnapshot.docs.isNotEmpty) {
       var doc = transactionSnapshot.docs.first;
 
-      // Update the transaction data
+      // Print out stored values for debugging
+      print("Stored Driver Name: ${doc['driverName']}");
+      print("Stored Trip Date: ${doc['date']}");
+
+      // Update the transaction
       await FirebaseFirestore.instance
           .collection('drivertransactions')
           .doc(doc.id)
           .update({
-        'driverName': newDriverName, // Update to the new driver
-        'amount': targetAmountString, // Ensure integer string format
-        'date': formattedTripDate, // Already formatted date
+        'driverName': newDriverName,
+        'amount': newBhataString,
+        'date': tripDate, // Update the date to the new trip date
       });
 
-      print(
-          "Updated transaction for driver: $newDriverName with amount: $targetAmountString and date: $formattedTripDate");
+      print("Updated Bhata for driver: $newDriverName to amount: $newBhataString on date: $tripDate");
     } else {
-      print("No matching transactions found for driver: $oldDriverName");
+      print("No matching transaction found to update.");
     }
   } catch (e) {
-    print("Error updating driver transaction: $e");
+    print("Error updating Bhata: $e");
   }
 }
+
+
+
+
+
 
 
 
