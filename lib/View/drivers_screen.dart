@@ -46,15 +46,20 @@ class DriversScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Drivers"),
-        backgroundColor: Colors.transparent,
+        title: const Text("Drivers"),
+        backgroundColor: Colors.white,
         elevation: 0,
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 24, // Increased font size for top bar title
+          fontWeight: FontWeight.bold, // Optional: make the title bold
+        ),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _getDrivers(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
@@ -62,7 +67,7 @@ class DriversScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text("No drivers found"));
+            return const Center(child: Text("No drivers found"));
           }
 
           return ListView.builder(
@@ -74,17 +79,16 @@ class DriversScreen extends StatelessWidget {
               return FutureBuilder<double>(
                 future: _getDriverBalance(driverName),
                 builder: (context, balanceSnapshot) {
-                  if (balanceSnapshot.connectionState == ConnectionState.waiting) {
-                    return ListTile(
-                      title: Text(driverName),
-                      subtitle: Text("Loading balance..."),
+                  if (balanceSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const ListTile(
+                      title: Text("Loading balance..."),
                     );
                   }
 
                   if (balanceSnapshot.hasError) {
                     return ListTile(
-                      title: Text(driverName),
-                      subtitle: Text("Error: ${balanceSnapshot.error}"),
+                      title: Text("Error: ${balanceSnapshot.error}"),
                     );
                   }
 
@@ -102,43 +106,63 @@ class DriversScreen extends StatelessWidget {
                       );
                     },
                     child: Card(
-                      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
+                        borderRadius: BorderRadius.circular(15.0),
                       ),
                       elevation: 5,
+                      color: Colors.white,
                       child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
                           children: [
-                            Text(
-                              driverName,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            // Icon Section
+                            CircleAvatar(
+                              backgroundColor: const Color.fromARGB(255, 128, 17, 54),
+                              child: const Icon(
+                                Icons.person,
+                                color: Colors.white,
                               ),
                             ),
-                            SizedBox(height: 8.0),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Balance: ",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
+                            const SizedBox(width: 16.0),
+                            // Driver Details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    driverName,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color.fromARGB(255, 177, 43, 34),
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  "₹ ${balance.toStringAsFixed(2)}",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
+                                  const SizedBox(height: 8.0),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Balance:",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                      Text(
+                                        "₹ ${balance.toStringAsFixed(2)}", // Rupee symbol added
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          color: Color.fromARGB(255, 81, 182, 114),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ],
                         ),
