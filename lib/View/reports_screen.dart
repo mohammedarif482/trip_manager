@@ -401,25 +401,25 @@ pw.Widget _buildTotalsRow(List<Map<String, dynamic>> data) {
                                 DataCell(
                                   Text(
                                     row['partyName'],
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
                                     row['revenue'].toStringAsFixed(2),
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
                                     row['expense'].toStringAsFixed(2),
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
                                     row['profit'].toStringAsFixed(2),
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                               ],
