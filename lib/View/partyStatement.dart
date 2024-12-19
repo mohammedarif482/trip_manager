@@ -138,44 +138,98 @@ class _PartyStatementState extends State<PartyStatement> {
   }
 
   // Create PDF document
-  Future<void> _createPdf() async {
-    final pdf = pw.Document();
+ Future<void> _createPdf() async {
+  final pdf = pw.Document();
 
-    // Get the current date in the format: yyyy-MM-dd
-    final String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  final String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  final String fileName = '${widget.partyName}_Statement_$currentDate.pdf';
 
-    // Set the PDF file name with the party name and generated date
-    final String fileName = '${widget.partyName}_Statement_$currentDate.pdf';
-
-    pdf.addPage(pw.Page(
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
       build: (pw.Context context) {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text('Party Name: ${widget.partyName}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+            // Header with title and date
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Party Statement',
+                  style: pw.TextStyle(
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Generated on: $currentDate',
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+            pw.Divider(),
             pw.SizedBox(height: 10),
-            pw.Text('Total Amount: ${totalAmount}', style: pw.TextStyle(fontSize: 16)),
-            pw.Text('Balance Amount: ${balanceAmount}', style: pw.TextStyle(fontSize: 16)),
+
+            // Party details
+            pw.Text(
+              'Party Name: ${widget.partyName}',
+              style: pw.TextStyle(fontSize: 16),
+            ),
+            pw.Text(
+              'Total Amount: $totalAmount',
+              style: pw.TextStyle(fontSize: 14),
+            ),
+            pw.Text(
+              'Balance Amount: $balanceAmount',
+              style: pw.TextStyle(fontSize: 14),
+            ),
             pw.SizedBox(height: 20),
-            // Only generate the table if there are transactions
+
+            // Table (with alternating row colors)
             if (transactions.isNotEmpty)
               pw.Table.fromTextArray(
-                context: context,
                 headers: ['Date', 'Description', 'Amount', 'Balance'],
                 data: _generateTableRows(),
-              ),
-            // If there are no transactions, display a message instead
-            if (transactions.isEmpty)
+                headerStyle: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                ),
+                headerDecoration: pw.BoxDecoration(
+                  color: PdfColors.blueGrey,
+                ),
+                cellStyle: pw.TextStyle(fontSize: 10),
+                cellAlignment: pw.Alignment.centerLeft,
+                rowDecoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey, width: 0.5),
+                ),
+                oddRowDecoration: pw.BoxDecoration(
+                  color: PdfColors.grey200,
+                ),
+              )
+            else
               pw.Text("No transactions available.", style: pw.TextStyle(fontSize: 16)),
+
+            pw.SizedBox(height: 20),
+
+            // Footer
+            pw.Divider(),
+            pw.Text(
+              'This is a system-generated statement. For any discrepancies, contact support.',
+              style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic),
+            ),
           ],
         );
       },
-    ));
+    ),
+  );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
-  }
+  await Printing.layoutPdf(
+    onLayout: (PdfPageFormat format) async => pdf.save(),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

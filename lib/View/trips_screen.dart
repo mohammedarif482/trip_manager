@@ -858,8 +858,8 @@ class _TripsScreenState extends State<TripsScreen> {
       };
     }).toList();
 
-    // Sort trips by parsedDate
-    trips.sort((a, b) => a['parsedDate'].compareTo(b['parsedDate']));
+    // Sort trips by parsedDate in descending order
+    trips.sort((a, b) => b['parsedDate'].compareTo(a['parsedDate']));
 
     if (!isDriver) {
       return trips
@@ -873,6 +873,7 @@ class _TripsScreenState extends State<TripsScreen> {
     rethrow;
   }
 }
+
 
 
   Future<List<Map<String, dynamic>>> _fetchCompletedTrips() async {
@@ -925,11 +926,12 @@ class _TripsScreenState extends State<TripsScreen> {
     };
   }).toList();
 
-  // Sort trips by parsedDate
-  trips.sort((a, b) => a['parsedDate'].compareTo(b['parsedDate']));
+  // Sort trips by parsedDate in descending order
+  trips.sort((a, b) => b['parsedDate'].compareTo(a['parsedDate']));
 
   return trips;
 }
+
 
 
 

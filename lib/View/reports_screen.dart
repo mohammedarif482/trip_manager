@@ -199,61 +199,116 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
   }
 
   // Function to generate the PDF
-  Future<void> _generatePdf(List<Map<String, dynamic>> data) async {
-    final pdf = pw.Document();
+ 
+Future<void> _generatePdf(List<Map<String, dynamic>> data) async {
+  final pdf = pw.Document();
+  const int rowsPerPage = 20; // Set the number of rows per page to avoid overflow
 
-    // Add a page
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Text('Profit/Loss Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                context: context,
-                data: [
-                  ['Party Name', 'Revenue', 'Expense', 'Profit'],
-                  ...data.map((row) => [
-                    row['partyName'],
-                    row['revenue'].toStringAsFixed(2),
-                    row['expense'].toStringAsFixed(2),
-                    row['profit'].toStringAsFixed(2),
-                  ])
-                ],
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                cellHeight: 40,
-                cellAlignments: {
-                  0: pw.Alignment.centerLeft,
-                  1: pw.Alignment.centerRight,
-                  2: pw.Alignment.centerRight,
-                  3: pw.Alignment.centerRight,
-                },
+  // Add a page for the report
+  pdf.addPage(
+    pw.Page(
+      build: (pw.Context context) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              'Profit/Loss Report',
+              style: pw.TextStyle(
+                fontSize: 24,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blueGrey,  // Correct usage of PdfColors without 'pw'
               ),
-              pw.SizedBox(height: 20),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Totals', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text(
-                    '${data.fold(0.0, (sum, row) => sum + row['revenue'])} / '
-                    '${data.fold(0.0, (sum, row) => sum + row['expense'])} / '
-                    '${data.fold(0.0, (sum, row) => sum + row['profit'])}',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 20),
+            _buildTableHeader(),
+            pw.Divider(),
+            pw.ListView.builder(
+              itemCount: (data.length / rowsPerPage).ceil(),
+              itemBuilder: (context, pageIndex) {
+                int startIndex = pageIndex * rowsPerPage;
+                int endIndex = startIndex + rowsPerPage;
+
+                List<Map<String, dynamic>> pageData = data.sublist(
+                    startIndex, endIndex > data.length ? data.length : endIndex);
+
+                return pw.Table.fromTextArray(
+                  context: context,
+                  data: [
+                    // Headers for the page
+                    ['Party Name', 'Revenue', 'Expense', 'Profit'],
+                    // Data rows
+                    ...pageData.map((row) => [
+                      row['partyName'],
+                      row['revenue'].toStringAsFixed(2),
+                      row['expense'].toStringAsFixed(2),
+                      row['profit'].toStringAsFixed(2),
+                    ])
+                  ],
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  headerDecoration: pw.BoxDecoration(
+                    color: PdfColors.grey300,  // Correct color constant usage
+                    borderRadius: pw.BorderRadius.circular(4),
                   ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-    );
+                  cellHeight: 30,
+                  cellAlignments: {
+                    0: pw.Alignment.centerLeft,
+                    1: pw.Alignment.centerRight,
+                    2: pw.Alignment.centerRight,
+                    3: pw.Alignment.centerRight,
+                  },
+                  rowDecoration: pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: PdfColors.black, width: 0.5),
+                    ),
+                  ),
+                );
+              },
+            ),
+            pw.SizedBox(height: 20),
+            _buildTotalsRow(data),
+          ],
+        );
+      },
+    ),
+  );
 
-    // Save and open the PDF
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
-  }
+  // Save and open the PDF
+  await Printing.layoutPdf(
+    onLayout: (PdfPageFormat format) async => pdf.save(),
+  );
+}
+
+// Table header builder
+pw.Widget _buildTableHeader() {
+  return pw.Row(
+    children: [
+      pw.Expanded(child: pw.Text('Party Name', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+      pw.Expanded(child: pw.Text('Revenue', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+      pw.Expanded(child: pw.Text('Expense', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+      pw.Expanded(child: pw.Text('Profit', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+    ],
+  );
+}
+
+// Totals row builder
+pw.Widget _buildTotalsRow(List<Map<String, dynamic>> data) {
+  double totalRevenue = data.fold(0.0, (sum, row) => sum + row['revenue']);
+  double totalExpenses = data.fold(0.0, (sum, row) => sum + row['expense']);
+  double totalProfit = data.fold(0.0, (sum, row) => sum + row['profit']);
+
+  return pw.Row(
+    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+    children: [
+      pw.Text('Totals', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+      pw.Text(
+        '${totalRevenue.toStringAsFixed(2)} / '
+        '${totalExpenses.toStringAsFixed(2)} / '
+        '${totalProfit.toStringAsFixed(2)}',
+        style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      ),
+    ],
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +322,7 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
           icon: Icon(Icons.arrow_back),
         ),
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>( 
+      body: FutureBuilder<List<Map<String, dynamic>>>(
         future: profitLossData,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -289,30 +344,43 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
+                  borderRadius: BorderRadius.circular(16.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
+                      color: Colors.grey.withOpacity(0.2),
+                      blurRadius: 12,
+                      offset: Offset(0, 6),
                     ),
                   ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0), // Padding inside the table
+                  padding: const EdgeInsets.all(16.0), // Padding inside the table
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header text
+                      Text(
+                        'Profit/Loss Overview',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueGrey[800],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // Table
                       DataTable(
                         headingRowColor: MaterialStateProperty.all(
-                          Colors.redAccent,
+                          Colors.blueGrey[700]!,
                         ),
                         headingTextStyle: TextStyle(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16, // Increased font size for headers
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
-                        columnSpacing: 12,
-                        dataRowHeight: 50,
+                        columnSpacing: 16,
+                        dataRowHeight: 60,
                         dividerThickness: 1,
                         columns: const [
                           DataColumn(label: Text('Party Name')),
@@ -327,31 +395,31 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
 
                             return DataRow(
                               color: MaterialStateProperty.all(
-                                index % 2 == 0 ? Colors.grey[100] : Colors.grey[200],
+                                index % 2 == 0 ? Colors.blueGrey[50] : Colors.blueGrey[100],
                               ),
                               cells: [
                                 DataCell(
                                   Text(
                                     row['partyName'],
-                                    style: TextStyle(fontSize: 14),
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
                                     row['revenue'].toStringAsFixed(2),
-                                    style: TextStyle(fontSize: 14),
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
                                     row['expense'].toStringAsFixed(2),
-                                    style: TextStyle(fontSize: 14),
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
                                     row['profit'].toStringAsFixed(2),
-                                    style: TextStyle(fontSize: 14),
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                               ],
@@ -360,7 +428,7 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
 
                           // Total Row
                           DataRow(
-                            color: MaterialStateProperty.all(Colors.greenAccent),
+                            color: MaterialStateProperty.all(Colors.blueGrey[200]),
                             cells: [
                               DataCell(
                                 Text(
@@ -368,23 +436,51 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black,
-                                    fontSize: 14,
+                                    fontSize: 16,
                                   ),
                                 ),
                               ),
-                              DataCell(Text(totalRevenue.toStringAsFixed(2))),
-                              DataCell(Text(totalExpenses.toStringAsFixed(2))),
-                              DataCell(Text(totalProfit.toStringAsFixed(2))),
+                              DataCell(Text(
+                                  totalRevenue.toStringAsFixed(2),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                              )),
+                              DataCell(Text(
+                                  totalExpenses.toStringAsFixed(2),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                              )),
+                              DataCell(Text(
+                                  totalProfit.toStringAsFixed(2),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                              )),
                             ],
                           ),
                         ],
                       ),
+
                       SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: () {
                           _generatePdf(data);
                         },
                         child: Text('Download PDF'),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.blueGrey[800],
+                          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                          textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -397,6 +493,7 @@ class _ProfitLossReportScreenState extends State<ProfitLossReportScreen> {
     );
   }
 }
+
 
 
 class PartyBalanceReportScreen extends StatefulWidget {
@@ -420,70 +517,61 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
     _fetchPartyBalances();
   }
 
-  // Method to fetch and listen to changes in party balances in real time
   Future<void> _fetchPartyBalances() async {
-  setState(() {
-    isLoading = true; // Start loading state
-  });
-
-  final List<Map<String, dynamic>> balances = [];
-
-  final partyReportSnapshot =
-      await FirebaseFirestore.instance.collection('partyreport').get();
-
-  for (var partyDoc in partyReportSnapshot.docs) {
-    final partyName = partyDoc['partyName'];
-
-    // Query the trips collection and calculate balance
-    final tripsSnapshot = await FirebaseFirestore.instance
-        .collection('trips')
-        .where('partyName', isEqualTo: partyName)
-        .snapshots();
-
-    // Listen for real-time updates
-    tripsSnapshot.listen((tripSnapshot) {
-      num totalBalance = 0;
-
-      for (var tripDoc in tripSnapshot.docs) {
-        final tripData = tripDoc.data();
-        final num amount = num.tryParse(tripData['amount'] ?? '0') ?? 0;
-        
-        
-        
-        num advanceTotal = 0;
-        if (tripData['advances'] != null) {
-          for (var advance in tripData['advances']) {
-            advanceTotal += num.tryParse(advance['amount'] ?? '0') ?? 0;
-          }
-        }
-
-        num paymentsTotal = 0;
-        if (tripData['payments'] != null) {
-          for (var payment in tripData['payments']) {
-            paymentsTotal += num.tryParse(payment['amount'] ?? '0') ?? 0;
-          }
-        }
-
-        totalBalance += amount - (advanceTotal + paymentsTotal);
-      }
-
-      // Update the balance for the party in real-time
-      balances.add({
-        'partyName': partyName,
-        'balance': totalBalance,
-      });
-
-      setState(() {
-        partyBalances = balances;
-        filteredBalances = balances;
-        isLoading = false; // Data loading is done
-      });
+    setState(() {
+      isLoading = true;
     });
+
+    final List<Map<String, dynamic>> balances = [];
+    final partyReportSnapshot =
+        await FirebaseFirestore.instance.collection('partyreport').get();
+
+    for (var partyDoc in partyReportSnapshot.docs) {
+      final partyName = partyDoc['partyName'];
+
+      final tripsSnapshot = await FirebaseFirestore.instance
+          .collection('trips')
+          .where('partyName', isEqualTo: partyName)
+          .snapshots();
+
+      tripsSnapshot.listen((tripSnapshot) {
+        num totalBalance = 0;
+
+        for (var tripDoc in tripSnapshot.docs) {
+          final tripData = tripDoc.data();
+          final num amount = num.tryParse(tripData['amount'] ?? '0') ?? 0;
+
+          num advanceTotal = 0;
+          if (tripData['advances'] != null) {
+            for (var advance in tripData['advances']) {
+              advanceTotal += num.tryParse(advance['amount'] ?? '0') ?? 0;
+            }
+          }
+
+          num paymentsTotal = 0;
+          if (tripData['payments'] != null) {
+            for (var payment in tripData['payments']) {
+              paymentsTotal += num.tryParse(payment['amount'] ?? '0') ?? 0;
+            }
+          }
+
+          totalBalance += amount - (advanceTotal + paymentsTotal);
+        }
+
+        balances.add({
+          'partyName': partyName,
+          'balance': totalBalance,
+        });
+
+        setState(() {
+          partyBalances = balances;
+          filteredBalances = balances;
+          isLoading = false;
+        });
+      });
+    }
   }
-}
 
-
-  // Method to filter balances based on search query and filter selection
   void _filterBalances() {
     setState(() {
       filteredBalances = partyBalances.where((party) {
@@ -499,16 +587,8 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
     });
   }
 
-  // Method to refresh the balances
-  void _refreshBalances() {
-    _fetchPartyBalances();
-  }
-
-  // Generate the PDF report
   Future<void> _generatePdf() async {
     final pdf = pw.Document();
-
-    // Add PDF Header
     pdf.addPage(
       pw.Page(
         build: (pw.Context context) {
@@ -522,8 +602,7 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
                 data: filteredBalances.map((party) {
                   return [
                     party['partyName'],
-                    NumberFormat('#,##0.00') // No currency symbol
-                        .format(party['balance']),
+                    NumberFormat('#,##0.00').format(party['balance']),
                   ];
                 }).toList(),
               ),
@@ -533,7 +612,6 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
       ),
     );
 
-    // Save and download PDF
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );
@@ -543,7 +621,14 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Party Balance Report"),
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        title: Row(
+          children: [
+            Icon(Icons.account_balance, size: 30),
+            SizedBox(width: 8),
+            Text("Party Balance Report"),
+          ],
+        ),
         leading: IconButton(
           onPressed: () {
             Navigator.of(context).pop();
@@ -554,7 +639,7 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
                 Expanded(
@@ -567,43 +652,51 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
                       hintText: "Search for a Party",
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(30),
                       ),
+                      filled: true,
+                      fillColor: Colors.grey[200],
                     ),
                   ),
                 ),
-                SizedBox(width: 8),
-                DropdownButton<String>(
-                  value: filter,
-                  onChanged: (value) {
-                    if (value != null) {
-                      filter = value;
-                      _filterBalances();
-                    }
-                  },
-                  items: [
-                    DropdownMenuItem(
-                      value: "All",
-                      child: Text("All"),
-                    ),
-                    DropdownMenuItem(
-                      value: "Positive",
-                      child: Text("Positive Balance"),
-                    ),
-                    DropdownMenuItem(
-                      value: "Cleared",
-                      child: Text("Cleared Balance"),
-                    ),
-                  ],
+                SizedBox(width: 16),
+                Container(
+                  width: 150,
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: filter,
+                    onChanged: (value) {
+                      if (value != null) {
+                        filter = value;
+                        _filterBalances();
+                      }
+                    },
+                    items: [
+                      DropdownMenuItem(
+                        value: "All",
+                        child: Text("All"),
+                      ),
+                      DropdownMenuItem(
+                        value: "Positive",
+                        child: Text("Positive Balance"),
+                      ),
+                      DropdownMenuItem(
+                        value: "Cleared",
+                        child: Text("Cleared Balance"),
+                      ),
+                    ],
+                    style: TextStyle(color: Colors.black),
+                    underline: SizedBox(),
+                  ),
                 ),
               ],
             ),
           ),
           Expanded(
             child: isLoading
-                ? Center(child: CircularProgressIndicator()) // Show loader while fetching data
+                ? Center(child: CircularProgressIndicator())
                 : filteredBalances.isEmpty
-                    ? Center(child: Text("No results found.")) // Show when no results
+                    ? Center(child: Text("No results found."))
                     : ListView.builder(
                         padding: const EdgeInsets.all(8.0),
                         itemCount: filteredBalances.length,
@@ -615,8 +708,9 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
                             margin: const EdgeInsets.symmetric(vertical: 8.0),
                             elevation: 4,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(15),
                             ),
+                            color: balance > 0 ? Colors.green[50] : Colors.red[50],
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor:
@@ -630,8 +724,8 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
                               ),
                               title: Text(
                                 party['partyName'],
-                                style: const TextStyle(
-                                  fontSize: 16,
+                                style: TextStyle(
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -664,13 +758,16 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
                       ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
               onPressed: _generatePdf,
               child: Text("Download PDF"),
               style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16), backgroundColor: const Color.fromARGB(255, 245, 245, 245),
                 textStyle: TextStyle(fontSize: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
             ),
           ),
@@ -679,6 +776,7 @@ class _PartyBalanceReportScreenState extends State<PartyBalanceReportScreen> {
     );
   }
 }
+
 
 
 
@@ -696,251 +794,157 @@ class _PartyRevenueReportScreenState extends State<PartyRevenueReportScreen> {
   String selectedFilter = 'All';
   String selectedSort = 'Party Name';
   bool isAscending = true;
-  List<Map<String, dynamic>> filteredData = [];
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Party Revenue Report"),
+        title: const Text("Party Revenue Report"),
         leading: IconButton(
           onPressed: () {
             Navigator.of(context).pop();
           },
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Search, Filter, and Sort Row
-            Padding(
-              padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.03, vertical: 8),
-              child: Row(
-                children: [
-                  // Search Bar
-                  Expanded(
-                    child: TextField(
-                      onChanged: (value) {
-                        setState(() {
-                          searchQuery = value.toLowerCase();
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Search by Party Name...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  // Filter Dropdown
-                  Container(
-                    width: screenWidth * 0.25,
-                    child: DropdownButton<String>(
-                      value: selectedFilter,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedFilter = newValue ?? 'All';
-                        });
-                      },
-                      items: <String>['All', 'By Revenue', 'By Trips']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  // Sort Dropdown
-                  Container(
-                    width: screenWidth * 0.25,
-                    child: DropdownButton<String>(
-                      value: selectedSort,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          selectedSort = newValue ?? 'Party Name';
-                        });
-                      },
-                      items: <String>['Party Name', 'Revenue', 'Trips']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  // Sort Order (Ascending/Descending)
-                  IconButton(
-                    icon: Icon(isAscending
-                        ? Icons.arrow_upward
-                        : Icons.arrow_downward),
-                    onPressed: () {
+      body: Column(
+        children: [
+          // Search, Filter, and Sort Section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (value) {
                       setState(() {
-                        isAscending = !isAscending;
+                        searchQuery = value.toLowerCase();
                       });
                     },
+                    decoration: InputDecoration(
+                      hintText: 'Search by Party Name...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      prefixIcon: const Icon(Icons.search),
+                    ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                DropdownButton<String>(
+                  value: selectedFilter,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedFilter = newValue ?? 'All';
+                    });
+                  },
+                  items: const [
+                    DropdownMenuItem(value: 'All', child: Text('All')),
+                    DropdownMenuItem(value: 'By Revenue', child: Text('By Revenue')),
+                    DropdownMenuItem(value: 'By Trips', child: Text('By Trips')),
+                  ],
+                ),
+                const SizedBox(width: 10),
+                DropdownButton<String>(
+                  value: selectedSort,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedSort = newValue ?? 'Party Name';
+                    });
+                  },
+                  items: const [
+                    DropdownMenuItem(value: 'Party Name', child: Text('Party Name')),
+                    DropdownMenuItem(value: 'Revenue', child: Text('Revenue')),
+                    DropdownMenuItem(value: 'Trips', child: Text('Trips')),
+                  ],
+                ),
+                IconButton(
+                  icon: Icon(
+                    isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      isAscending = !isAscending;
+                    });
+                  },
+                ),
+              ],
             ),
-            // FutureBuilder for data fetching
-            Container(
-              height: screenHeight * 0.7, // Limit height for table
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: fetchPartyRevenueData(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text("Error: ${snapshot.error}"));
-                  }
-                  final data = snapshot.data ?? [];
-                  final filteredData = applyFiltersAndSort(data);
+          ),
+          // Revenue Table Section
+          Expanded(
+            child: FutureBuilder<List<Map<String, dynamic>>>(  
+              future: fetchPartyRevenueData(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text("Error: ${snapshot.error}"));
+                }
 
-                  final int totalTrips = filteredData.fold(0,
-                      (sum, item) => sum + (item['trips'] as int));
-                  final int totalRevenue = filteredData.fold(0,
-                      (sum, item) => sum + (item['revenue'] as int));
+                final data = snapshot.data ?? [];
+                final filteredData = applyFiltersAndSort(data);
 
-                  return Column(
-                    children: [
-                      // Table Header
-                      Container(
-                        color: Colors.red, // Red background for header
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                "Party/Customer Name",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white), // White font
-                              ),
-                            ),
-                            Expanded(
-                              flex: 1,
-                              child: Text(
-                                "Trips",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                "Revenue",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
+                final totalTrips = filteredData.fold<int>(0, (sum, item) => sum + (item['trips'] as int));
+                final totalRevenue = filteredData.fold<int>(0, (sum, item) => sum + (item['revenue'] as int));
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columnSpacing: 20,
+                      headingRowColor: MaterialStateColor.resolveWith((states) => Colors.blue[700]!),
+                      headingTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      columns: const [
+                        DataColumn(label: Text("Party/Customer Name")),
+                        DataColumn(label: Text("Trips")),
+                        DataColumn(label: Text("Revenue")),
+                      ],
+                      rows: [
+                        for (final party in filteredData)
+                          DataRow(
+                            color: MaterialStateProperty.resolveWith<Color?>(
+                                (states) => filteredData.indexOf(party).isEven ? Colors.grey[100] : Colors.transparent),
+                            cells: [
+                              DataCell(Text(party['partyName'] ?? 'N/A')),
+                              DataCell(Text(party['trips'].toString(), textAlign: TextAlign.end)),
+                              DataCell(Text(
+                                "₹${NumberFormat("#,##0").format(party['revenue'])}",
+                                textAlign: TextAlign.end,
+                              )),
+                            ],
+                          ),
+                        DataRow(
+                          color: MaterialStateProperty.resolveWith<Color?>((states) => Colors.green[100]),
+                          cells: [
+                            const DataCell(Text(
+                              "Total",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            )),
+                            DataCell(Text(
+                              totalTrips.toString(),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.end,
+                            )),
+                            DataCell(Text(
+                              "₹${NumberFormat("#,##0").format(totalRevenue)}",
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.end,
+                            )),
                           ],
                         ),
-                      ),
-                      // Table content
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: filteredData.length,
-                          itemBuilder: (context, index) {
-                            final party = filteredData[index];
-                            return Container(
-                              color: index % 2 == 0
-                                  ? Colors.grey[100]
-                                  : Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 16),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(party['partyName'] ?? 'N/A'),
-                                  ),
-                                  Expanded(
-                                    flex: 1,
-                                    child: Text(
-                                      party['trips'].toString(),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      "₹${party['revenue']}",
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      // Total Row at the bottom of the table
-                      Container(
-                        color: Colors.green, // Green background for total row
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                "Total",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white, // White text
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 1,
-                              child: Text(
-                                totalTrips.toString(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white, // White text
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                "₹${totalRevenue}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white, // White text
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -950,13 +954,11 @@ class _PartyRevenueReportScreenState extends State<PartyRevenueReportScreen> {
     final partyCollection = FirebaseFirestore.instance.collection('partyreport');
     final tripsCollection = FirebaseFirestore.instance.collection('trips');
 
-    // Fetch party report data
     final partySnapshot = await partyCollection.get();
     final List<Map<String, dynamic>> partyData = partySnapshot.docs.map((doc) {
-      // Process the amount field
       final rawAmount = doc['amount'] as String;
       final cleanAmount = rawAmount.replaceAll(RegExp(r'[₹, ]'), '');
-      final revenue = int.tryParse(cleanAmount) ?? 0; // Convert to int, fallback to 0 if invalid
+      final revenue = int.tryParse(cleanAmount) ?? 0;
 
       return {
         'partyName': doc['partyName'],
@@ -964,12 +966,10 @@ class _PartyRevenueReportScreenState extends State<PartyRevenueReportScreen> {
       };
     }).toList();
 
-    // Fetch trips data and calculate counts
     for (var party in partyData) {
       final partyName = party['partyName'];
-      final tripsSnapshot =
-          await tripsCollection.where('partyName', isEqualTo: partyName).get();
-      party['trips'] = tripsSnapshot.size; // Count documents for this party
+      final tripsSnapshot = await tripsCollection.where('partyName', isEqualTo: partyName).get();
+      party['trips'] = tripsSnapshot.size;
     }
 
     return partyData;
@@ -977,35 +977,24 @@ class _PartyRevenueReportScreenState extends State<PartyRevenueReportScreen> {
 
   // Apply search, filter, and sort to the data
   List<Map<String, dynamic>> applyFiltersAndSort(List<Map<String, dynamic>> data) {
-    // Apply search filter
     var filteredData = data.where((party) {
-      return party['partyName']
-          .toString()
-          .toLowerCase()
-          .contains(searchQuery);
+      return party['partyName'].toString().toLowerCase().contains(searchQuery);
     }).toList();
 
-    // Apply selected filter
     if (selectedFilter == 'By Revenue') {
-      filteredData = filteredData
-          .where((party) => party['revenue'] > 0)
-          .toList();
+      filteredData = filteredData.where((party) => party['revenue'] > 0).toList();
     } else if (selectedFilter == 'By Trips') {
       filteredData = filteredData.where((party) => party['trips'] > 0).toList();
     }
 
-    // Sort data based on selected sort option
     if (selectedSort == 'Party Name') {
-      filteredData.sort((a, b) => a['partyName']
-          .toString()
-          .compareTo(b['partyName'].toString()));
+      filteredData.sort((a, b) => a['partyName'].toString().compareTo(b['partyName'].toString()));
     } else if (selectedSort == 'Revenue') {
       filteredData.sort((a, b) => a['revenue'].compareTo(b['revenue']));
     } else if (selectedSort == 'Trips') {
       filteredData.sort((a, b) => a['trips'].compareTo(b['trips']));
     }
 
-    // Reverse order if descending
     if (!isAscending) {
       filteredData = filteredData.reversed.toList();
     }
@@ -1013,6 +1002,7 @@ class _PartyRevenueReportScreenState extends State<PartyRevenueReportScreen> {
     return filteredData;
   }
 }
+
 
 
 
